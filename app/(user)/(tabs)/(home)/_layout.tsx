@@ -10,8 +10,8 @@ import { formatEmail } from '@/helper/my-lib'
 import { Avatar, View } from 'react-native-ui-lib'
 import { useStatusBar } from '@/hooks/useStatusBar'
 import { useFetchMeContext } from '@/context/FetchMeContext'
-import { apiUrl } from '@/helper/api'
 
+// TODO optimize image loading
 
 const SkeletonLoader: React.FC<{ width: number; height: number; borderRadius: number }> = ({ width, height, borderRadius }) => {
     return (
@@ -53,7 +53,7 @@ const RootHome = () => {
 
         return (
             <TouchableOpacity style={tw`flex-row items-center gap-3`} disabled={userData ? false : true} onPress={() => router.navigate("/account/edit-account")} >
-                <View style={tw` h-17 w-17 rounded-full bg-slate-200 justify-center items-center`}>
+                <View style={tw`h-17 w-17 rounded-full bg-slate-200 justify-center items-center`}>
                     {userData && profileImageUrl ? (
                         <Avatar
                             size={63}
@@ -116,7 +116,7 @@ const RootHome = () => {
                             iterationCount={1}
                             direction="normal"
                             duration={1000}
-                            style={[tw`relative android:pt-11 ios:pt-13`]}>
+                            style={[tw`relative android:pt-11 ios:pt-13 web:pt-5`]}>
 
                             <LinearGradient
                                 start={{ x: 0.4, y: 0.2 }}
@@ -125,7 +125,7 @@ const RootHome = () => {
                                     String(tw.color("white")),
                                     String(tw.color("blue-50")),
                                 ]}
-                                style={[tw`ios:h-[135px] android:h-[130px] top-0 left-0 w-full absolute rounded-b-2xl`]}
+                                style={[tw`ios:h-[135px] web:h-[103px] android:h-[130px] top-0 left-0 w-full absolute rounded-b-2xl border border-slate-200`]}
                             >
                             </LinearGradient>
 
@@ -141,7 +141,7 @@ const RootHome = () => {
                                 iterationCount={showCalendar ? 1 : "infinite"}
                                 direction="normal"
                                 duration={showCalendar ? 1000 : 3000}
-                                style={[tw`absolute top-30 ios:top-32 right-[-25px]`]}
+                                style={[tw`absolute android:top-30 web:top-20 ios:top-32 right-[-25px]`]}
                             >
                                 <TouchableOpacity onPress={toggleView} style={tw`ios:shadow-md android:shadow-sm rounded-l-2xl border border-slate-200 bg-white`}>
                                     {!showCalendar ? (

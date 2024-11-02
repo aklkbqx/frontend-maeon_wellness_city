@@ -29,11 +29,21 @@ export interface NotificationDataPayload {
 
 // Interface หลักสำหรับข้อมูลการแจ้งเตือน
 export interface NotificationData {
-  type: notifications_type;            // ประเภทการแจ้งเตือน
-  title: string;                       // หัวข้อการแจ้งเตือน
-  body: string;                        // เนื้อหาการแจ้งเตือน
-  receive: NotificationReceiver;       // ข้อมูลผู้รับ
-  data?: NotificationDataPayload;      // ข้อมูลเพิ่มเติม
+  type: notifications_type;
+  title: string;
+  body: string;
+  receive: {
+    userId?: number | number[];
+    all: boolean;
+    role?: string | string[];
+  };
+  data?: {
+    link?: {
+      pathname: string;
+      params?: any
+    }
+  };
+  dev?: boolean
 }
 
 // Interface สำหรับการตอบกลับจาก API

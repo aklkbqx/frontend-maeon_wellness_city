@@ -290,4 +290,77 @@ const MainTourProgram: React.FC = () => {
                                     onPress={() => setShowSearch(true)}
                                 >
                                     <Ionicons name="search" size={24} color={tw.color('black')} />
-                              
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </Animatable.View>
+                </View>
+            )
+        }} />
+    );
+
+    return (
+        <>
+            {renderStackHeader()}
+
+            <Modal visible={loading} transparent>
+                <BlurView intensity={10} style={tw`flex-1 justify-center items-center`}>
+                    <Loading loading={loading} size={'large'} />
+                </BlurView>
+            </Modal>
+
+            <ScrollView style={tw`flex-1 bg-slate-100 pt-4`}>
+                <View style={tw`px-5`}>
+                    <View style={tw`justify-between items-center flex-row my-1`}>
+                        <TextTheme
+                            font="Prompt-Medium"
+                            size="sm"
+                            style={tw`text-white bg-blue-500 rounded-xl overflow-hidden px-2 py-1`}
+                        >
+                            วันที่เลือก: {formatDateThai(dateSelected as string)}
+                        </TextTheme>
+                    </View>
+                </View>
+
+                <View style={tw`mx-5 mt-2`}>
+                    {programTypes ? (
+                        filteredProgramTypes.length > 0 ? (
+                            !isSearching ? (
+                                <FlatList
+                                    data={filteredProgramTypes}
+                                    renderItem={({ item: programType }) => (
+                                        <>
+                                            <TextTheme
+                                                font="Prompt-Medium"
+                                                size="lg"
+                                                style={tw`mb-3`}
+                                            >
+                                                {programType.name}
+                                            </TextTheme>
+                                            {programType.programs.map(renderProgram)}
+                                        </>
+                                    )}
+                                    keyExtractor={(item) => item.id.toString()}
+                                    scrollEnabled={false}
+                                />
+                            ) : (
+                                <Loading loading={isSearching} size={'large'} style={tw`mt-10`} />
+                            )
+                        ) : (
+                            hasSearched && (
+                                <View style={tw`mt-5`}>
+                                    <TextTheme style={tw`text-center text-zinc-800`}>
+                                        ไม่พบผลลัพธ์ที่คุณค้นหา
+                                    </TextTheme>
+                                </View>
+                            )
+                        )
+                    ) : null}
+                </View>
+                <View style={tw`mb-20`} />
+            </ScrollView>
+        </>
+    );
+};
+
+export default MainTourProgram;

@@ -42,7 +42,7 @@ const Search = () => {
     try {
       const response = await api.get("/api/search/locations/types");
       if (response.data.success && response.data.location_type) {
-        const locations = response.data.location_type.filter((loc: LocationType) => loc.name !== "โรงพยาบาล");
+        const locations = response.data.location_type
         setLocationTypes(locations);
       }
     } catch (error) {
@@ -196,33 +196,31 @@ const Search = () => {
   return (
     <View style={tw`flex-1 bg-slate-100`}>
       <View style={tw`px-5 mt-2 flex-1`}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={tw`relative mb-3`}>
-            <TextInput
-              style={[
-                tw`border border-slate-200 rounded-xl py-2 px-10 flex-row text-zinc-500 bg-white`,
-                { fontFamily: "Prompt-Regular" }
-              ]}
-              placeholder='ค้นหาสถานที่ที่คุณสนใจ...'
-              placeholderTextColor={"#717179"}
-              value={searchQuery}
-              onChangeText={handleSearch}
-              autoCapitalize='none'
-              autoFocus
+        <View style={tw`relative mb-3`}>
+          <TextInput
+            style={[
+              tw`border border-slate-200 rounded-xl py-2 px-10 flex-row text-zinc-500 bg-white`,
+              { fontFamily: "Prompt-Regular" }
+            ]}
+            placeholder='ค้นหาสถานที่ที่คุณสนใจ...'
+            placeholderTextColor={"#717179"}
+            value={searchQuery}
+            onChangeText={handleSearch}
+            autoCapitalize='none'
+            autoFocus
+          />
+          {searching ? (
+            <Ionicons
+              name='refresh'
+              style={tw`text-zinc-500 absolute top-[15%] android:top-[20%] right-[4%] text-xl`}
             />
-            {searching ? (
-              <Ionicons
-                name='refresh'
-                style={tw`text-zinc-500 absolute top-[15%] android:top-[20%] right-[4%] text-xl`}
-              />
-            ) : (
-              <Ionicons
-                name='search'
-                style={tw`text-zinc-500 absolute top-[15%] android:top-[20%] left-[4%] text-xl`}
-              />
-            )}
-          </View>
-        </TouchableWithoutFeedback>
+          ) : (
+            <Ionicons
+              name='search'
+              style={tw`text-zinc-500 absolute top-[15%] android:top-[20%] left-[4%] text-xl`}
+            />
+          )}
+        </View>
 
         {!loading && !searchQuery && (
           <>

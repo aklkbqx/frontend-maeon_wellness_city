@@ -18,6 +18,7 @@ import Toast from "react-native-toast-message";
 import { BANK_RECEIVER } from '@/constants/payments';
 import { useNotification } from '@/context/NotificationProvider';
 import { Payments, Users } from '@/types/PrismaType';
+import { notifications_type } from '@/types/notifications';
 
 interface Activity {
     sequence: number;
@@ -67,7 +68,7 @@ const Payment = () => {
     useStatusBar("dark-content");
     const { bookingId } = useLocalSearchParams();
     const { userData } = useFetchMeContext()
-    const { sendNotification, sendWebSocketNotification, wsConnected, reconnect } = useNotification();
+    const { sendWebSocketNotification, wsConnected, reconnect } = useNotification();
 
     // states
     const [bookingData, setBookingData] = useState<BookingItem | null>(null);
@@ -236,7 +237,7 @@ const Payment = () => {
                     Toast.hide();
                     if (userData?.id && bookingData) {
                         const notificationData = {
-                            type: "PAYMENT",
+                            type: notifications_type.PAYMENT,
                             title: "ชำระเงินสำเร็จ",
                             body: `การชำระเงินของคุณสำเร็จแล้ว จำนวน ฿${addCommas(bookingData.total_price)} บาท`,
                             receive: {
@@ -244,23 +245,20 @@ const Payment = () => {
                                 all: false,
                                 role: "admin"
                             },
-                            data: JSON.stringify({
+                            data: {
                                 link: {
                                     pathname: `/payments/success`,
                                     params: {
                                         bookingId: bookingData.id
                                     }
                                 }
-                            })
+                            }
                         };
-
-                        await sendNotification(notificationData.title, notificationData.body)
-
                         if (!wsConnected) {
                             reconnect();
-                            sendWebSocketNotification(notificationData as any);
+                            sendWebSocketNotification(notificationData);
                         } else {
-                            sendWebSocketNotification(notificationData as any);
+                            sendWebSocketNotification(notificationData);
                         }
                     }
 

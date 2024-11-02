@@ -1,5 +1,4 @@
 import { ExpoConfig, ConfigContext } from '@expo/config';
-import { apiUrl } from './helper/api';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
@@ -33,11 +32,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 'fetch',
                 'remote-notification',
                 'processing',
-                'background-fetch'
+                'background-fetch',
+                'background-processing',
             ],
-            // เพิ่มการตั้งค่าสำหรับการแจ้งเตือน
             NSCameraUsageDescription: "แอพนี้ต้องการเข้าถึงกล้องเพื่อถ่ายรูปหลักฐานการชำระเงิน",
             NSPhotoLibraryUsageDescription: "แอพนี้ต้องการเข้าถึงคลังรูปภาพเพื่อเลือกรูปหลักฐานการชำระเงิน",
+            BGTaskSchedulerPermittedIdentifiers: [
+                "com.maeonwellnesscity.BACKGROUND_FETCH_TASK",
+                "com.maeonwellnesscity.BACKGROUND_NOTIFICATION_TASK"
+            ],
+            NSAppTransportSecurity: {
+                NSAllowsArbitraryLoads: true,
+                NSAllowsArbitraryLoadsInWebContent: true,
+                NSAllowsLocalNetworking: true
+            },
+            UIRequiredDeviceCapabilities: [
+                "location-services",
+                "telephony",
+                "wifi",
+                "armv7"
+            ],
         },
         associatedDomains: [
             "applinks:maeonwellnesscity.com",
@@ -52,44 +66,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
         config: {
             googleMaps: {
-                apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-            },
+                apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+            }
         },
         permissions: [
-            "ACCESS_FINE_LOCATION",
-            "ACCESS_COARSE_LOCATION",
-            "RECEIVE_BOOT_COMPLETED",
-            "WAKE_LOCK",
-            "FOREGROUND_SERVICE",
-            "POST_NOTIFICATIONS",
-            "NOTIFICATIONS",
-            "CAMERA",
-            "READ_EXTERNAL_STORAGE",
-            "WRITE_EXTERNAL_STORAGE",
-            "SCHEDULE_EXACT_ALARM",
-            "USE_EXACT_ALARM"
+            'ACCESS_COARSE_LOCATION',
+            'ACCESS_FINE_LOCATION',
+            'ACCESS_BACKGROUND_LOCATION',
+            'CAMERA',
+            'READ_EXTERNAL_STORAGE',
+            'WRITE_EXTERNAL_STORAGE'
         ],
-        intentFilters: [
-            {
-                action: "VIEW",
-                autoVerify: true,
-                data: [
-                    {
-                        scheme: "https",
-                        host: "*.maeonwellnesscity.com",
-                        pathPrefix: "/receipt"
-                    },
-                    {
-                        scheme: "maeonwellness",
-                        host: "receipt"
-                    }
-                ],
-                category: [
-                    "BROWSABLE",
-                    "DEFAULT"
-                ]
-            }
-        ]
+        softwareKeyboardLayoutMode: "pan",
+        allowBackup: true,
+        versionCode: 1
+    },
+    web: {
+        bundler: 'metro'
     },
     plugins: [
         "expo-router",
@@ -98,6 +91,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             {
                 icon: "./assets/images/adaptive-icon.png",
                 color: "#ffffff",
+                // sounds: ['./assets/sounds/notification.wav'],
+                mode: "production",
                 androidMode: "default",
                 androidCollapsedTitle: "#{unread_notifications} การแจ้งเตือนใหม่",
                 iosDisplayInForeground: true,
@@ -105,10 +100,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 androidImportance: "max",
                 androidShowBadge: true,
                 androidVibrate: [0, 250, 250, 250],
-                androidSound: true
+                androidSound: true,
+                androidAllowWhileIdle: true,
+                androidPriority: "max",
             }
         ],
-        "expo-background-fetch",
+        [
+            "expo-background-fetch",
+            {
+                startOnBoot: true,
+                minimumInterval: 60, // เพิ่มเป็น 60 วินาที
+                stopOnTerminate: false,
+                enableHeadless: true,
+                requiresCharging: false,
+                requiresDeviceIdle: false,
+                requiresBatteryNotLow: false,
+                requiresStorageNotLow: false
+            }
+        ],
+        "expo-task-manager",
         [
             "expo-location",
             {
@@ -118,19 +128,32 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 "isIosBackgroundLocationEnabled": true,
                 "isAndroidBackgroundLocationEnabled": true
             }
+        ],
+        [
+            "expo-build-properties",
+            {
+                ios: {
+                    deploymentTarget: "13.4",
+                    useFrameworks: "static",
+                    bundleType: "framework"
+                }
+            }
         ]
     ],
+
     extra: {
         apiUrl: process.env.EXPO_PUBLIC_API_URL,
         eas: {
             projectId: "4d6e92ff-508b-4a8d-822d-4b24cf5f494a"
         }
     },
+
     updates: {
         url: 'https://u.expo.dev/4d6e92ff-508b-4a8d-822d-4b24cf5f494a',
         fallbackToCacheTimeout: 0,
         enabled: true,
         checkAutomatically: 'ON_LOAD'
     },
+
     runtimeVersion: "1.0.0"
 });

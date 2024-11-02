@@ -8,12 +8,8 @@ import { NotificationData } from '@/types/notifications';
 import { handleErrorMessage, userTokenLogin } from '@/helper/my-lib';
 import useShowToast from '@/hooks/useShowToast';
 import { useFetchMeContext } from '@/context/FetchMeContext';
-import * as BackgroundFetch from 'expo-background-fetch';
-import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
 
-export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
-export const BACKGROUND_FETCH_TASK = 'BACKGROUND_FETCH_TASK';
 const NOTIFICATION_CHANNEL_ID = 'default';
 
 export const setupNotificationChannel = async () => {
@@ -62,43 +58,15 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
     return true;
 };
 
-enum BackgroundFetchResult {
-    NoData = 1,
-    NewData = 2,
-    Failed = 3
-}
-
-export const registerBackgroundFetchAsync = async () => {
-    try {
-        await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
-            minimumInterval: 60 * 15,
-            stopOnTerminate: false,
-            startOnBoot: true,
-        });
-    } catch (err) {
-        console.error("Task Register failed:", err);
-    }
-};
-
-export const unregisterBackgroundFetchAsync = async () => {
-    try {
-        await BackgroundFetch.unregisterTaskAsync(BACKGROUND_FETCH_TASK);
-    } catch (err) {
-        console.error("Task Unregister failed:", err);
-    }
-};
-
 export const scheduleNotification = async (
-    title: string,
-    body: string,
-    data?: any,
+    data: NotificationData,
     options: Partial<Notifications.NotificationRequestInput> = {}
 ) => {
     await Notifications.scheduleNotificationAsync({
         content: {
-            title,
-            body,
-            data,
+            title: data.title,
+            body: data.body,
+            data: data.data,
             sound: 'default',
             priority: Notifications.AndroidNotificationPriority.MAX,
             ...options,
@@ -109,37 +77,6 @@ export const scheduleNotification = async (
 
 export const setBadgeCount = async (count: number) => {
     await Notifications.setBadgeCountAsync(count);
-};
-
-TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
-    const token = await AsyncStorage.getItem(userTokenLogin);
-    if (!token) {
-        return BackgroundFetchResult.NoData;
-    }
-
-    try {
-        return BackgroundFetchResult.NewData;
-    } catch (error) {
-        return BackgroundFetchResult.Failed;
-    }
-});
-
-TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
-    if (error) {
-        console.error('Background notification task error:', error);
-        return;
-    }
-
-    if (data) {
-        const { title, body, payload } = data as any;
-        await scheduleNotification(title, body, payload);
-    }
-});
-
-export const checkBackgroundFetchStatus = async () => {
-    const status = await BackgroundFetch.getStatusAsync();
-    const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_FETCH_TASK);
-    return { status, isRegistered };
 };
 
 export const handleNotificationResponse = (
@@ -161,7 +98,7 @@ interface NotificationContextType {
     toggleNotifications: () => Promise<void>;
     requestPermission: () => Promise<string>;
     sendWebSocketNotification: (data: NotificationData) => void;
-    sendNotification: (title: string, body: string, data?: any) => Promise<void>;
+    sendNotification: (data: NotificationData) => Promise<void>;
     openAppSettings: () => void;
     disconnectWebSocket: () => void;
     isLoading: boolean;
@@ -270,7 +207,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const getToken = useCallback(async () => {
         try {
             const token = await AsyncStorage.getItem(userTokenLogin);
-            console.log('Token retrieved:', token ? 'Yes' : 'No');
             setJwtToken(token);
             return token;
         } catch (err) {
@@ -281,19 +217,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const connectWebSocket = useCallback(async () => {
         if (!isInitialized) {
-            console.log('Not initialized yet, skipping WebSocket connection');
             return;
         }
         if (!isLogin) {
-            console.log('Not logged in, skipping WebSocket connection');
             return;
         }
         if (!userData) {
-            console.log('No user data, skipping WebSocket connection');
             return;
         }
         if (socketRef.current?.readyState === WebSocket.OPEN) {
-            console.log('WebSocket already connected');
             return;
         }
         if (socketRef.current) {
@@ -303,7 +235,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         try {
             const websocketURL = `${wsUrl}/api/ws/notification?token=${userToken}`;
-            console.log('Attempting to connect WebSocket:', websocketURL);
 
             socketRef.current = new WebSocket(websocketURL);
 
@@ -316,7 +247,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketRef.current.onmessage = async (event) => {
                 try {
                     const response = JSON.parse(event.data);
-                    console.log('Received message:', response);
                     if (response.success === false) {
                         console.error('WebSocket error:', response.message);
                         return;
@@ -341,7 +271,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     );
 
                     if (shouldNotify && isEnabled) {
-                        await scheduleNotification(data.title, data.body, data.data);
+                        await scheduleNotification(data);
                     }
                 } catch (err) {
                     console.error('Error processing message:', err);
@@ -358,7 +288,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 console.log('WebSocket disconnected');
                 setWsConnected(false);
                 if (isLogin && userData) {
-                    console.log('Scheduling reconnection...');
                     reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
                 }
             };
@@ -368,9 +297,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setError('Failed to connect to notification service');
             setWsConnected(false);
         }
-    }, [isInitialized, isLogin, userData, isEnabled, userToken]);
+    }, [isInitialized, isLogin, isEnabled, userToken, userData]);
 
-    // Toggle notifications
     const toggleNotifications = async () => {
         if (isEnabled) {
             Alert.alert(
@@ -382,7 +310,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         text: "ปิดการแจ้งเตือน",
                         style: "destructive",
                         onPress: async () => {
-                            await unregisterBackgroundFetchAsync();
                             setIsEnabled(false);
                             await saveSettings(false);
                             useShowToast("info", "ปิดการแจ้งเตือน", "ปิดการแจ้งเตือนเรียบร้อยแล้ว!");
@@ -401,7 +328,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         {
                             text: "เปิดการแจ้งเตือน",
                             onPress: async () => {
-                                await registerBackgroundFetchAsync();
                                 setIsEnabled(true);
                                 await saveSettings(true);
                                 useShowToast("success", "เปิดการแจ้งเตือน", "เปิดการแจ้งเตือนเรียบร้อยแล้ว!");
@@ -413,8 +339,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     };
 
-    // Send notification via WebSocket
-    const sendWebSocketNotification = useCallback((data: NotificationData) => {
+    const sendWebSocketNotification = useCallback(async (data: NotificationData) => {
         if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
             handleErrorMessage('ไม่สามารถเชื่อมต่อกับระบบแจ้งเตือน กรุณาลองใหม่อีกครั้ง');
             return;
@@ -422,14 +347,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         try {
             socketRef.current.send(JSON.stringify(data));
+            await sendNotification(data)
         } catch (err) {
             console.error('Error sending WebSocket notification:', err);
             handleErrorMessage('เกิดข้อผิดพลาดในการส่งการแจ้งเตือน');
         }
     }, []);
 
-    // Send local notification
-    const sendNotification = async (title: string, body: string, data?: any) => {
+    const sendNotification = async (data: NotificationData) => {
         if (!isEnabled) {
             handleErrorMessage('การแจ้งเตือนถูกปิดอยู่');
             return;
@@ -448,7 +373,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
 
         try {
-            await scheduleNotification(title, body, data);
+            await scheduleNotification(data);
             setBadgeCountState(prev => prev + 1);
             await setBadgeCount(badgeCount + 1);
         } catch (err) {
@@ -457,7 +382,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     };
 
-    // Disconnect WebSocket
     const disconnectWebSocket = useCallback(() => {
         if (socketRef.current) {
             socketRef.current.close();
@@ -470,39 +394,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     }, []);
 
-    const initialize = async () => {
+    const initialize = useCallback(async () => {
         try {
-            console.log('Initializing...');
             setIsLoading(true);
-
-            // โหลดการตั้งค่าการแจ้งเตือน
             await loadSettings();
-
-            // ตั้งค่าการแจ้งเตือน
             await initializeNotifications();
-
-            // เมื่อเสร็จสิ้นการ initialize
             setIsInitialized(true);
         } catch (error) {
             console.error('Initialization error:', error);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
     useEffect(() => {
         initialize();
     }, []);
 
     useEffect(() => {
         if (!isInitialized) return;
-
-        if (isLogin && userData) {
-            console.log('User data loaded, connecting WebSocket...');
+        if (isLogin) {
             connectWebSocket();
         } else {
             disconnectWebSocket();
         }
-    }, [isInitialized, isLogin, userData]);
+    }, [isInitialized, isLogin]);
 
     useEffect(() => {
         const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -529,10 +445,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     useEffect(() => {
         const initializeToken = async () => {
             if (isLogin) {
-                console.log('User is logged in, getting token...');
                 await getToken();
             } else {
-                console.log('User is not logged in, clearing token');
                 setJwtToken(null);
                 disconnectWebSocket();
             }
@@ -544,19 +458,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     useEffect(() => {
         const initializeWebSocket = async () => {
             if (isLogin && jwtToken && userData) {
-                console.log('All requirements met, connecting to WebSocket...');
                 await connectWebSocket();
             } else {
-                if (!isLogin) console.log('Not logged in');
-                if (!jwtToken) console.log('No JWT token');
-                if (!userData) console.log('No user data');
                 disconnectWebSocket();
             }
         };
-
         initializeWebSocket();
-
-        // Cleanup
         return () => {
             disconnectWebSocket();
         };
@@ -607,7 +514,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setBadgeCount(0);
         }, [])
     );
-
 
     const contextValue = useMemo(() => ({
         isEnabled,
