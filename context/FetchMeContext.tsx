@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userTokenLogin } from '@/helper/my-lib';
 import isEqual from 'lodash/isEqual';
 import useRoleNavigation from '@/hooks/useRoleNavigation';
+import { router } from 'expo-router';
 
 // TODO optimize code 
 
@@ -57,6 +58,9 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
                 }).catch(error => {
                     handleAxiosError(error, (message) => {
                         handleErrorMessage(message);
+                        if (message === "authenticator fail") {
+                            logout()
+                        }
                     });
                     reject(error);
                 })
@@ -88,6 +92,8 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
             userDataRef.current = null;
             setProfileImageUrl(null);
             setIsLogin(false);
+        } finally{
+            router.replace("/logout");
         }
     }, []);
 

@@ -171,7 +171,7 @@ const Register: React.FC = () => {
 
     return (
         <View style={tw`flex-1 relative`}>
-            <TouchableOpacity style={tw`absolute right-3 android:top-3 ios:top-3 mt-0 android:mt-4 z-10`} onPress={() => router.dismiss()}>
+            <TouchableOpacity style={tw`absolute right-3 android:top-3 web:top-5 ios:top-3 mt-0 android:mt-4 z-10`} onPress={() => router.dismiss()}>
                 <Ionicons name="close" size={35} style={tw`text-white`} />
             </TouchableOpacity>
             <Modal
@@ -188,7 +188,7 @@ const Register: React.FC = () => {
             </Modal>
 
             <LinearGradient
-                style={tw`flex-1`}
+                style={tw`flex-1 web:pt-5`}
                 start={{
                     x: 0,
                     y: 0

@@ -50,8 +50,8 @@ export default function RootLayout() {
               <Stack.Screen name="error-page" options={{ headerShown: false }} />
               <Stack.Screen name="connection-error" options={{ headerShown: false, gestureEnabled: false }} />
             </Stack>
+            <Toast />
           </InternetProvider>
-          <Toast />
         </GestureHandlerRootView>
       </ThemeProvider>
     </FontLoader>
