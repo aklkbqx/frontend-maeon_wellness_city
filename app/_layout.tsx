@@ -7,6 +7,9 @@ import { BackHandler, Platform } from 'react-native';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { InternetProvider } from '@/context/InternetProvider';
+import { RoleProvider } from '@/context/RoleProvider';
+import NotificationProvider from '@/context/NotificationProvider'
+import { FetchMeProvider } from '@/context/FetchMeContext';
 
 export default function RootLayout() {
   const navigation = useNavigation()
@@ -39,17 +42,24 @@ export default function RootLayout() {
       <ThemeProvider value={DefaultTheme}>
         <GestureHandlerRootView>
           <InternetProvider>
-            <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false, gestureEnabled: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "slide_from_bottom", presentation: "modal" }} />
-              <Stack.Screen name="(user)" options={{ headerShown: false, gestureEnabled: false }} />
-              <Stack.Screen name="(admin)" options={{ headerShown: false, gestureEnabled: false }} />
-              <Stack.Screen name="(attractions)" options={{ headerShown: false, gestureEnabled: false }} />
-              <Stack.Screen name="logout" options={{ headerShown: false, gestureEnabled: false }} />
-              <Stack.Screen name="+not-found" />
-              <Stack.Screen name="error-page" options={{ headerShown: false }} />
-              <Stack.Screen name="connection-error" options={{ headerShown: false, gestureEnabled: false }} />
-            </Stack>
+            <FetchMeProvider>
+              <RoleProvider>
+                <NotificationProvider>
+                  <Stack>
+                    <Stack.Screen name="index" options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="pages" options={{ headerShown: false, animation: "fade_from_bottom"}} />
+                    <Stack.Screen name="auth" options={{ headerShown: false, animation: "slide_from_bottom", presentation: "modal" }} />
+                    <Stack.Screen name="user" options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="admin" options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="attractions" options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="logout" options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="+not-found" />
+                    <Stack.Screen name="error-page" options={{ headerShown: false }} />
+                    <Stack.Screen name="connection-error" options={{ headerShown: false, gestureEnabled: false }} />
+                  </Stack>
+                </NotificationProvider>
+              </RoleProvider>
+            </FetchMeProvider>
             <Toast />
           </InternetProvider>
         </GestureHandlerRootView>

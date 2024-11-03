@@ -154,7 +154,7 @@ const ConnectionError: React.FC = () => {
         if (canGoBack) {
             router.back();
         } else {
-            router.replace("/(home)");
+            router.replace("/user/home");
         }
     }, []);
 

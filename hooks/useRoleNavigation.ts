@@ -13,7 +13,7 @@ interface RoleConfig {
 const useRoleNavigation = () => {
     const roleConfigs: Record<string, RoleConfig> = {
         user: {
-            path: '/(home)',
+            path: '/user/home',
             message: {
                 type: 'success',
                 title: 'ยินดีต้อนรับ',
@@ -21,7 +21,7 @@ const useRoleNavigation = () => {
             }
         },
         admin: {
-            path: '/(admin)/dashboard',
+            path: '/admin/dashboard',
             message: {
                 type: 'success',
                 title: 'ยินดีต้อนรับ Admin',
@@ -37,7 +37,7 @@ const useRoleNavigation = () => {
             }
         },
         attractions: {
-            path: '/(attractions)/',
+            path: '/attractions/',
             message: {
                 type: 'success',
                 title: 'ยินดีต้อนรับ',

@@ -1,34 +1,36 @@
-import React, { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import TextTheme from "../TextTheme";
-import { FlatList, TouchableOpacity, View } from "react-native";
-import tw from "twrnc";
-import { Href, router } from "expo-router";
-import { Switch } from "react-native-ui-lib";
-import LogoutModal from "../LogoutModal";
-import { Users } from "@/types/PrismaType";
-import { useNotification } from "@/context/NotificationProvider";
-import { useFetchMeContext } from "@/context/FetchMeContext";
+import React, { useState } from 'react';
+import { FlatList, TouchableOpacity, View } from 'react-native';
+import { Switch } from 'react-native-ui-lib';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { router, Href } from 'expo-router';
+import tw from 'twrnc';
+import TextTheme from '../TextTheme';
+import LogoutModal from '../LogoutModal';
+import { Users } from '@/types/PrismaType';
+import { useNotification } from '@/context/NotificationProvider';
+import { useFetchMeContext } from '@/context/FetchMeContext';
 
 type IoniconsName = keyof typeof Ionicons.glyphMap;
 
-type MenuItem = {
+interface MenuItem {
     text: string;
     iconname: IoniconsName;
     link: string;
     color?: string;
-};
+}
 
-type MenuList = {
-    [key: string]: MenuItem[];
-};
+interface MenuSectionProps {
+    title: string;
+    type: 'account' | 'policy' | 'setting';
+    userData: Users | null;
+}
 
-const menuList: MenuList = {
+const menuList: Record<MenuSectionProps['type'], MenuItem[]> = {
     account: [
         {
             text: "ข้อมูลส่วนตัว",
             iconname: "person",
-            link: "/account/edit-account"
+            link: "/pages/edit-account"
         },
         {
             text: "สิ่งที่ถูกใจ",
@@ -67,17 +69,13 @@ const menuList: MenuList = {
     ]
 };
 
-const MenuSection: React.FC<{
-    title: string;
-    type: keyof typeof menuList;
-    userData: Users | null
-}> = ({ title, type, userData }) => {
+const MenuSection: React.FC<MenuSectionProps> = ({ title, type, userData }) => {
     const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
-    const { logout } = useFetchMeContext()
+    const { logout } = useFetchMeContext();
     const { toggleNotifications, isEnabled } = useNotification();
 
-    const items = menuList[type] || [];
-    const filteredItems = items.filter(item => {
+    // Filter items based on user status
+    const filteredItems = menuList[type].filter(item => {
         if (item.text === "ออกจากระบบ") {
             return userData !== null;
         }
@@ -92,32 +90,42 @@ const MenuSection: React.FC<{
         }
     };
 
-    const renderItem = ({ item, index }: { item: MenuItem; index: number }) => (
+    const renderItem = ({ item }: { item: MenuItem }) => (
         <TouchableOpacity
             onPress={() =>
                 item.text === "การแจ้งเตือน"
                     ? toggleNotifications()
                     : handleItemPress(item.link, item.text)
             }
-            style={tw`flex-row justify-between items-center px-5 w-full py-3`}
+            style={tw`flex-row justify-between items-center p-4 bg-white rounded-xl mb-2 shadow-sm`}
         >
-            <View style={tw`flex-row items-center gap-2`}>
-                <Ionicons
-                    style={item.text === "ออกจากระบบ" ? tw`text-red-600` : tw`text-zinc-700`}
-                    size={25}
-                    name={item.iconname}
-                />
+            <View style={tw`flex-row items-center gap-3`}>
+                <View style={tw`w-10 h-10 rounded-full ${item.text === "ออกจากระบบ" ? "bg-red-100" : "bg-blue-100"} items-center justify-center`}>
+                    <Ionicons
+                        style={item.text === "ออกจากระบบ" ? tw`text-red-600` : tw`text-blue-600`}
+                        size={20}
+                        name={item.iconname}
+                    />
+                </View>
                 <TextTheme
+                    font="Prompt-Medium"
                     color={item.text === "ออกจากระบบ" ? "red-600" : 'zinc-700'}
-                    style={tw`text-[16px]`}
                 >
                     {item.text}
                 </TextTheme>
             </View>
-            {item.text === "การแจ้งเตือน" && (
-                <View>
-                    <Switch style={tw`${isEnabled ? 'bg-blue-500' : "bg-gray-500"}`} value={isEnabled} onValueChange={toggleNotifications} />
-                </View>
+            {item.text === "การแจ้งเตือน" ? (
+                <Switch 
+                    style={tw`${isEnabled ? 'bg-blue-500' : "bg-gray-300"}`} 
+                    value={isEnabled} 
+                    onValueChange={toggleNotifications} 
+                />
+            ) : (
+                <MaterialCommunityIcons 
+                    name="chevron-right" 
+                    size={24} 
+                    color="#9CA3AF"
+                />
             )}
         </TouchableOpacity>
     );
@@ -127,24 +135,26 @@ const MenuSection: React.FC<{
 
     return (
         <>
-            {title && (
-                <TextTheme
-                    size="lg"
-                    color="zinc-400"
-                    font="Prompt-SemiBold"
-                    style={tw`px-5 my-2`}
-                >
-                    {title}
-                </TextTheme>
-            )}
-            <View style={tw`border-b-2 border-slate-200`} />
-            <FlatList
-                data={filteredItems}
-                renderItem={renderItem}
-                keyExtractor={keyExtractor}
-                scrollEnabled={false}
-                initialNumToRender={filteredItems.length}
-            />
+            <View style={tw`px-5 py-3`}>
+                {title && (
+                    <TextTheme
+                        size="base"
+                        color="zinc-500"
+                        font="Prompt-SemiBold"
+                        style={tw`mb-2`}
+                    >
+                        {title}
+                    </TextTheme>
+                )}
+                <FlatList
+                    data={filteredItems}
+                    renderItem={renderItem}
+                    keyExtractor={keyExtractor}
+                    scrollEnabled={false}
+                    initialNumToRender={filteredItems.length}
+                    contentContainerStyle={tw`gap-1`}
+                />
+            </View>
             <LogoutModal
                 isVisible={isLogoutModalVisible}
                 onClose={() => setIsLogoutModalVisible(false)}

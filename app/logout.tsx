@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 
 const Logout = () => {
     useFocusEffect(useCallback(() => {
-        router.replace("/(home)");
+        router.replace("/user/home");
         useShowToast("info", "ออกจากระบบ", "ออกจากระบบแล้ว 👋");
     }, []))
     return (

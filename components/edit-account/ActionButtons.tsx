@@ -15,18 +15,18 @@ const ActionButtons: React.FC<{
             disabled={loadingCancel}
         >
             <View style={tw.style("flex-row gap-1")}>
-                {loadingCancel && loadingCancel ? <ActivityIndicator size="small" color={String(tw.color("white"))} /> : <Ionicons name="reload" size={20} style={tw.style("text-white mt-0.5")} />}
+                {loadingCancel && loadingCancel ? <ActivityIndicator size="small" color={String(tw.color("white"))} /> : <Ionicons name="reload" size={15} style={tw.style("text-white mt-1")} />}
                 <TextTheme font='Prompt-SemiBold' color='white' children="ยกเลิก" />
             </View>
 
         </TouchableOpacity>
         <TouchableOpacity
-            style={tw.style(`bg-blue-500 p-2 rounded-xl flex-row items-center gap-2`)}
+            style={tw.style(`bg-blue-600 p-2 rounded-xl flex-row items-center gap-2`)}
             onPress={handleSaveProfile}
         // disabled={toast.visible ? true : false}
         >
             <View style={tw.style("flex-row gap-1")}>
-                {modalVisible && modalVisible ? <ActivityIndicator size="small" color={String(tw.color("white"))} /> : <Ionicons name="save" size={20} style={tw.style("text-white mt-0.5")} />}
+                {modalVisible && modalVisible ? <ActivityIndicator size="small" color={String(tw.color("white"))} /> : <Ionicons name="save" size={15} style={tw.style("text-white mt-1")} />}
                 <TextTheme font='Prompt-SemiBold' color='white' children="บันทึก" />
             </View>
         </TouchableOpacity>
