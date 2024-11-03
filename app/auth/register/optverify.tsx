@@ -58,7 +58,7 @@ const OTPVerification: React.FC = () => {
     const [countDown, setCountDown] = useState<number>(0)
     const [modalVisible, setModalVisible] = useState<boolean>(false);
 
-    const contDownRef = useRef<NodeJS.Timeout>();
+    const contDownRef = useRef<ReturnType<typeof setTimeout>>();
     const inputRefs = useRef<TextInput[]>([]);
 
     const isOTPComplete = otp.filter(digit => digit !== '').length === 6;
@@ -156,7 +156,7 @@ const OTPVerification: React.FC = () => {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={tw`flex-1`}
             >
-                <LinearGradient style={tw`flex-1`} colors={[String(tw.color("blue-500")), String(tw.color("blue-300")), String(tw.color("blue-900"))]}>
+                <LinearGradient style={tw`flex-1`} colors={[String(tw.color("blue-500")), String(tw.color("blue-600")), String(tw.color("blue-900"))]}>
 
                     <ScrollView contentContainerStyle={tw`flex-grow justify-center items-center p-4`}>
                         <View style={tw`bg-white p-6 rounded-5 border-2 border-blue-400 w-full max-w-sm`}>

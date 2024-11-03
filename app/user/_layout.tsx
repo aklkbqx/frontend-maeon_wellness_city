@@ -3,6 +3,7 @@ import { Stack } from 'expo-router'
 import AppUsageStatusProvider from '@/context/AppUsageStatusProvider'
 import { FetchMeProvider } from '@/context/FetchMeContext'
 import { useRedirectByRole } from '@/hooks/useRedirectByRole'
+import NotificationProvider from '@/context/NotificationProvider'
 
 const UserLayout = () => {
     const { isLoading } = useRedirectByRole(['user']);
@@ -36,7 +37,9 @@ const UserLayout = () => {
 const RootUser = () => {
     return (
         <FetchMeProvider>
-            <UserLayout />
+            <NotificationProvider>
+                <UserLayout />
+            </NotificationProvider>
         </FetchMeProvider>
     )
 }

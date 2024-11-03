@@ -115,7 +115,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Refs
     const socketRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // States
     const [isEnabled, setIsEnabled] = useState(false);
@@ -150,7 +150,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             console.error('Error saving settings:', err);
         }
     };
-
     const connectWebSocket = useCallback(async () => {
         if (!isInitialized || !isLogin || !userData || !userToken || !isEnabled) {
             return
@@ -201,6 +200,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         (Array.isArray(data.receive.role) && data.receive.role.includes(String(userData.role))) ||
                         data.receive.role === userData?.role
                     );
+
 
                     if (shouldNotify && isEnabled) {
                         await scheduleNotification(data);

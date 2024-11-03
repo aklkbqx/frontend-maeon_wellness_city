@@ -1,16 +1,16 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, FlatList, TouchableOpacity, RefreshControl, ScrollView, ActivityIndicator } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import tw from 'twrnc';
 import TextTheme from '@/components/TextTheme';
 import { NotificationsType, NotificationsStatus, PaymentsStatus, Notifications } from '@/types/PrismaType';
-import api from '@/helper/api';
 import { handleAxiosError, handleErrorMessage } from '@/helper/my-lib';
 import useShowToast from '@/hooks/useShowToast';
 import { formatDistanceToNow } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 
 // Types
 interface NotificationData {
@@ -33,10 +33,11 @@ interface FilterTabProps {
     isActive: boolean;
     count: number;
     icon: keyof typeof Ionicons.glyphMap;
+    badgeColor?: string;
     onPress: () => void;
 }
 
-type TabType = 'all' | 'unread' | NotificationsType;
+type TabType = 'all' | 'unread' | 'payment' | 'order' | 'status' | 'system';
 
 interface FilterTabsData {
     id: TabType;
@@ -50,66 +51,72 @@ const getNotificationTypeStyles = (type: NotificationsType) => {
         case 'PAYMENT':
             return {
                 bgColor: 'bg-green-100',
-                icon: 'cash-outline',
+                icon: 'cash-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('green-500'))
             };
         case 'ORDER':
             return {
                 bgColor: 'bg-blue-100',
-                icon: 'cart-outline',
+                icon: 'cart-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('blue-500'))
             };
         case 'STATUS_UPDATE':
             return {
                 bgColor: 'bg-orange-100',
-                icon: 'refresh-outline',
+                icon: 'refresh-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('orange-500'))
             };
         case 'SYSTEM':
             return {
                 bgColor: 'bg-gray-100',
-                icon: 'settings-outline',
+                icon: 'settings-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('gray-500'))
             };
         case 'CHAT':
             return {
                 bgColor: 'bg-purple-100',
-                icon: 'chatbubble-outline',
+                icon: 'chatbubble-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('purple-500'))
             };
         case 'PROMOTION':
             return {
                 bgColor: 'bg-yellow-100',
-                icon: 'pricetag-outline',
+                icon: 'pricetag-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('yellow-500'))
             };
         case 'ANNOUNCEMENT':
             return {
                 bgColor: 'bg-red-100',
-                icon: 'megaphone-outline',
+                icon: 'megaphone-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('red-500'))
             };
         case 'REMINDER':
             return {
                 bgColor: 'bg-indigo-100',
-                icon: 'alarm-outline',
+                icon: 'alarm-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('indigo-500'))
             };
         default:
             return {
                 bgColor: 'bg-gray-100',
-                icon: 'notifications-outline',
+                icon: 'notifications-outline' as keyof typeof Ionicons.glyphMap,
                 iconColor: String(tw.color('gray-500'))
             };
     }
 };
 
-// Components
-const FilterTab: React.FC<FilterTabProps> = ({ label, isActive, count, icon, onPress }) => (
+const FilterTab: React.FC<FilterTabProps> = ({
+    label,
+    isActive,
+    count,
+    icon,
+    badgeColor = 'indigo',
+    onPress
+}) => (
     <TouchableOpacity
         style={tw`
             px-4 py-2 rounded-xl
-            ${isActive ? 'bg-indigo-100' : 'bg-white'}
+            ${isActive ? `bg-${badgeColor}-100` : 'bg-white'}
             border border-gray-200
         `}
         onPress={onPress}
@@ -118,16 +125,16 @@ const FilterTab: React.FC<FilterTabProps> = ({ label, isActive, count, icon, onP
             <Ionicons
                 name={icon}
                 size={20}
-                color={isActive ? tw.color('indigo-600') : tw.color('gray-500')}
+                color={isActive ? tw.color(`${badgeColor}-600`) : tw.color('gray-500')}
             />
             <TextTheme
-                style={tw`${isActive ? 'text-indigo-600' : 'text-gray-600'}`}
+                style={tw`${isActive ? `text-${badgeColor}-600` : 'text-gray-600'}`}
             >
                 {label}
             </TextTheme>
             <View style={tw`
                 px-2 py-0.5 rounded-full
-                ${isActive ? 'bg-indigo-500' : 'bg-gray-200'}
+                ${isActive ? `bg-${badgeColor}-500` : 'bg-gray-200'}
             `}>
                 <TextTheme
                     size="xs"
@@ -254,151 +261,152 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
     );
 };
 
-// Main Component
+
 export default function NotificationsScreen() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('all');
-    const [isLoading, setIsLoading] = useState(false);
-    const [notifications, setNotifications] = useState<Notifications[]>([]);
+    const {
+        notifications,
+        isLoading,
+        fetchNotifications,
+        verifyPayment,
+        confirmBooking,
+        markAsRead
+    } = useAdminNotifications();
 
     const filterTabs: FilterTabsData[] = [
-        { id: 'all', label: 'ทั้งหมด', icon: 'notifications-outline' },
-        { id: 'unread', label: 'ยังไม่อ่าน', icon: 'mail-unread-outline' },
-        { id: 'PAYMENT', label: 'การชำระเงิน', icon: 'cash-outline' },
-        { id: 'ORDER', label: 'คำสั่งซื้อ', icon: 'cart-outline' },
-        { id: 'STATUS_UPDATE', label: 'อัพเดทสถานะ', icon: 'refresh-outline' },
-        { id: 'SYSTEM', label: 'ระบบ', icon: 'settings-outline' }
+        {
+            id: 'all',
+            label: 'ทั้งหมด',
+            icon: 'notifications-outline' as keyof typeof Ionicons.glyphMap
+        },
+        {
+            id: 'unread',
+            label: 'ยังไม่อ่าน',
+            icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap
+        },
+        {
+            id: 'payment',
+            label: 'การชำระเงิน',
+            icon: 'cash-outline' as keyof typeof Ionicons.glyphMap
+        },
+        {
+            id: 'order',
+            label: 'คำสั่งซื้อ',
+            icon: 'cart-outline' as keyof typeof Ionicons.glyphMap
+        },
+        {
+            id: 'status',
+            label: 'อัพเดทสถานะ',
+            icon: 'refresh-outline' as keyof typeof Ionicons.glyphMap
+        },
+        {
+            id: 'system',
+            label: 'ระบบ',
+            icon: 'settings-outline' as keyof typeof Ionicons.glyphMap
+        }
     ];
-
-    const fetchNotifications = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const response = await api.get('/api/notifications/admin');
-            if (response.data.success) {
-                setNotifications(response.data.notifications);
-            }
-        } catch (error) {
-            handleAxiosError(error, (message) => {
-                handleErrorMessage(message);
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchNotifications();
-    }, [fetchNotifications]);
-
-    const handleNotificationAction = async (notificationId: number, action: string) => {
-        try {
-            const notification = notifications.find(n => n.id === notificationId);
-            if (!notification) return;
-
-            const notificationData: NotificationData = notification.data ? JSON.parse(notification.data) : {};
-
-            switch (action) {
-                case 'approve':
-                    if (notificationData.paymentId) {
-                        await api.put(`/api/payments/${notificationData.paymentId}/verify`, {
-                            status: 'PAID'
-                        });
-                        useShowToast('success', 'สำเร็จ', 'ยืนยันการชำระเงินเรียบร้อย');
-                    }
-                    break;
-
-                case 'reject':
-                    if (notificationData.paymentId) {
-                        await api.put(`/api/payments/${notificationData.paymentId}/verify`, {
-                            status: 'REJECTED'
-                        });
-                        useShowToast('success', 'สำเร็จ', 'ปฏิเสธการชำระเงินเรียบร้อย');
-                    }
-                    break;
-
-                case 'confirm_booking':
-                    if (notificationData.bookingId) {
-                        await api.put(`/api/bookings/${notificationData.bookingId}/status`, {
-                            status: 'CONFIRMED'
-                        });
-                        useShowToast('success', 'สำเร็จ', 'ยืนยันการจองเรียบร้อย');
-                    }
-                    break;
-            }
-
-            await fetchNotifications();
-
-        } catch (error) {
-            handleAxiosError(error, (message) => {
-                handleErrorMessage(message);
-            });
-        }
-    };
 
     const getFilteredNotifications = () => {
         switch (activeTab) {
             case 'unread':
                 return notifications.filter(n => n.status === 'UNREAD');
+            case 'payment':
+                return notifications.filter(n => n.type === 'PAYMENT');
+            case 'order':
+                return notifications.filter(n => n.type === 'ORDER');
+            case 'status':
+                return notifications.filter(n => n.type === 'STATUS_UPDATE');
+            case 'system':
+                return notifications.filter(n => n.type === 'SYSTEM');
             case 'all':
-                return notifications;
             default:
-                return notifications.filter(n => n.type === activeTab);
+                return notifications;
         }
     };
 
-    const markAsRead = async (notificationId: number) => {
-        try {
-            await api.put(`/api/notifications/${notificationId}/read`);
-            await fetchNotifications();
-        } catch (error) {
-            handleAxiosError(error, (message) => {
-                handleErrorMessage(message);
-            });
+    const handleMarkAllAsRead = async () => {
+        const unreadNotifications = notifications.filter(n => n.status === 'UNREAD');
+        for (const notification of unreadNotifications) {
+            await markAsRead(notification.id);
         }
+        await fetchNotifications();
     };
 
     const computeTabCounts = () => {
         return filterTabs.map(tab => ({
             ...tab,
-            count: tab.id === 'all'
-                ? notifications.length
-                : tab.id === 'unread'
-                    ? notifications.filter(n => n.status === 'UNREAD').length
-                    : notifications.filter(n => n.type === tab.id).length
+            count: getNotificationCount(tab.id as TabType),
+            badgeColor: getNotificationBadgeColor(tab.id as TabType)
         }));
+    };
+
+    const getNotificationCount = (type: TabType): number => {
+        switch (type) {
+            case 'all':
+                return notifications.length;
+            case 'unread':
+                return notifications.filter(n => n.status === 'UNREAD').length;
+            case 'payment':
+                return notifications.filter(n => n.type === 'PAYMENT').length;
+            case 'order':
+                return notifications.filter(n => n.type === 'ORDER').length;
+            case 'status':
+                return notifications.filter(n => n.type === 'STATUS_UPDATE').length;
+            case 'system':
+                return notifications.filter(n => n.type === 'SYSTEM').length;
+            default:
+                return 0;
+        }
+    };
+
+    const getNotificationBadgeColor = (type: TabType): string => {
+        switch (type) {
+            case 'unread':
+                return 'red';
+            case 'payment':
+                return 'green';
+            case 'order':
+                return 'blue';
+            case 'status':
+                return 'orange';
+            case 'system':
+                return 'gray';
+            default:
+                return 'indigo';
+        }
     };
 
     return (
         <View style={tw`flex-1 bg-gray-50`}>
-            <Stack.Screen options={{
-                headerTitle: "การแจ้งเตือน",
-                headerTitleStyle: {
-                    fontFamily: "Prompt-SemiBold",
-                    fontSize: 18
-                },
-                headerShadowVisible: false
-            }} />
+            <Tabs.Screen
+                options={{
+                    title: 'แจ้งเตือน',
+                    tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'notifications' : 'notifications-outline'} color={color} />,
+                }}
+            />
+            <View>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={tw``}
+                    contentContainerStyle={tw`p-2 flex-row`}
+                >
+                    {computeTabCounts().map((tab) => (
+                        <View key={tab.id} style={tw`mr-2`}>
+                            <FilterTab
+                                label={tab.label}
+                                icon={tab.icon}
+                                isActive={activeTab === tab.id}
+                                count={tab.count}
+                                badgeColor={tab.badgeColor}
+                                onPress={() => setActiveTab(tab.id as TabType)}
+                            />
+                        </View>
+                    ))}
+                </ScrollView>
+            </View>
 
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={tw`border-b border-gray-200 bg-white`}
-                contentContainerStyle={tw`p-4`}
-            >
-                {computeTabCounts().map((tab) => (
-                    <View key={tab.id} style={tw`mr-2`}>
-                        <FilterTab
-                            label={tab.label}
-                            icon={tab.icon}
-                            isActive={activeTab === tab.id}
-                            count={tab.count}
-                            onPress={() => setActiveTab(tab.id)}
-                        />
-                    </View>
-                ))}
-            </ScrollView>
-
-            {/* Summary Section - แสดงสรุปจำนวนการแจ้งเตือนที่ต้องดำเนินการ */}
             <View style={tw`px-4 py-3 bg-white border-b border-gray-200`}>
                 <View style={tw`flex-row justify-between items-center`}>
                     <View style={tw`flex-row items-center gap-2`}>
@@ -417,12 +425,7 @@ export default function NotificationsScreen() {
                     </View>
                     <TouchableOpacity
                         style={tw`flex-row items-center gap-1`}
-                        onPress={() => {
-                            // Implement mark all as read
-                            notifications
-                                .filter(n => n.status === 'UNREAD')
-                                .forEach(n => markAsRead(n.id));
-                        }}
+                        onPress={handleMarkAllAsRead}
                     >
                         <Ionicons
                             name="checkmark-done-outline"
@@ -446,36 +449,38 @@ export default function NotificationsScreen() {
                             if (item.status === 'UNREAD') {
                                 await markAsRead(item.id);
                             }
-
-                            // Handle navigation based on notification type
                             const data: NotificationData = item.data ? JSON.parse(item.data) : {};
-
                             switch (item.type) {
                                 case 'PAYMENT':
                                     if (data.paymentId) {
                                         router.push(`/admin/payments/${data.paymentId}`);
                                     }
                                     break;
-
                                 case 'ORDER':
                                     if (data.bookingId) {
                                         router.push(`/admin/bookings/${data.bookingId}`);
                                     }
                                     break;
-
                                 case 'STATUS_UPDATE':
                                     if (data.redirectUrl) {
                                         router.push(data.redirectUrl);
                                     }
                                     break;
-
-                                // Add more cases for other notification types
-                                default:
-                                    // For notifications without specific navigation
+                            }
+                        }}
+                        onAction={async (action) => {
+                            switch (action) {
+                                case 'approve':
+                                    await verifyPayment(item.id, PaymentsStatus.PAID);
+                                    break;
+                                case 'reject':
+                                    await verifyPayment(item.id, PaymentsStatus.REJECTED);
+                                    break;
+                                case 'confirm_booking':
+                                    await confirmBooking(item.id);
                                     break;
                             }
                         }}
-                        onAction={(action) => handleNotificationAction(item.id, action)}
                     />
                 )}
                 keyExtractor={(item) => item.id.toString()}
@@ -513,21 +518,3 @@ export default function NotificationsScreen() {
         </View>
     );
 }
-
-// Add translations for date-fns (optional)
-// import { th } from 'date-fns/locale';
-// import { formatDistanceToNow } from 'date-fns';
-
-// const formatThaiDate = (date: Date) => {
-//     return formatDistanceToNow(date, {
-//         addSuffix: true,
-//         locale: th
-//     });
-// };
-
-// // Add loading indicator component (optional)
-// import { ActivityIndicator } from 'react-native';
-
-// // Add types for notification actions (optional)
-// type NotificationActionType = 'approve' | 'reject' | 'confirm_booking';
-// ```

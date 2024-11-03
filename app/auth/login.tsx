@@ -148,7 +148,7 @@ const Login = () => {
                     y: 0
                 }}
                 colors={[
-                    String(tw.color("blue-900")),
+                    String(tw.color("blue-700")),
                     String(tw.color("blue-500")),
                     String(tw.color("indigo-300")),
                 ]}>

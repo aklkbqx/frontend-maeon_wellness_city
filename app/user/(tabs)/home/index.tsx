@@ -16,6 +16,7 @@ import api from '@/helper/api';
 import { handleAxiosError, handleErrorMessage } from '@/helper/my-lib';
 import CalendarModal from '@/components/user/CalendarModal';
 import Loading from '@/components/Loading';
+import { BlurView } from 'expo-blur';
 
 
 interface LocationType {
@@ -30,30 +31,13 @@ interface TourItem {
 }
 
 interface CategoryButtonProps {
-    icon: keyof typeof MaterialCommunityIcons.glyphMap;
     label: string;
-    color: string;
     onPress: () => void;
 }
 
 interface PopularPlaceProps extends TourItem {
     onPress: () => void;
 }
-
-const getIconName = (name: string): keyof typeof MaterialCommunityIcons.glyphMap => {
-    switch (name) {
-        case "สถานที่ท่องเที่ยว": return "map-marker";
-        case "ที่พัก": return "bed";
-        case "แหล่งเรียนรู้": return "school";
-        case "ร้านอาหารและของฝาก": return "store";
-        default: return "map-marker-question";
-    }
-};
-
-const getIconColor = (index: number): string => {
-    const colors = ["rose", "sky", "purple", "amber", "fuchsia"];
-    return colors[index % colors.length];
-};
 
 const popularTours: TourItem[] = [
     {
@@ -141,22 +125,40 @@ const ProfileHeader: React.FC = () => {
 };
 
 
-const CategoryButton: React.FC<CategoryButtonProps> = ({ icon, label, color, onPress }) => (
-    <Animatable.View animation="fadeIn" style={tw`px-2 mb-4`}>
-        <TouchableOpacity onPress={onPress} style={tw`items-center`}>
-            <LinearGradient
-                colors={[String(tw.color('white')), String(tw.color(`${color}-50`))]}>
-                <View style={tw`aspect-square rounded-2xl p-4 shadow-sm border border-${color}-100`}>
-                    <View style={tw`flex-1 justify-center items-center`}>
-                        <MaterialCommunityIcons name={icon} size={32} color={String(tw.color(`${color}-500`))} />
-                    </View>
-                </View>
-            </LinearGradient>
-            <TextTheme size='xs' style={tw`text-center mt-2 text-gray-700`}>{label}</TextTheme>
-        </TouchableOpacity>
-    </Animatable.View>
-);
+const CategoryButton: React.FC<{ locationTypes: LocationType[] }> = ({ locationTypes }) => {
+    const getIconName = (name: string): keyof typeof Ionicons.glyphMap => {
+        switch (name) {
+            case "สถานที่ท่องเที่ยว": return "earth";
+            case "ที่พัก": return "bed";
+            case "แหล่งเรียนรู้": return "school";
+            case "ร้านอาหารและของฝาก": return "restaurant";
+            default: return "alert";
+        }
+    };
 
+    const getIconColor = (index: number): string => {
+        const colors = ["rose-500", "sky-500", "purple-500", "amber-500", "fuchsia-500"];
+        return colors[index % colors.length];
+    };
+
+    return (
+        <View style={tw`gap-2 flex-col mb-5`}>
+            <View style={tw`flex-row flex-wrap gap-2`}>
+                {locationTypes.filter((v) => v.name !== "โรงพยาบาล").map((type, index) => (
+                    <View style={tw`items-center basis-[23%] flex-col`} key={`menu1-2${index}`}>
+                        <TouchableOpacity style={tw`w-full h-[70px] mb-1`}>
+                            <LinearGradient colors={["#fff", String(tw.color(getIconColor(index).replace("-500", "-50")))]}
+                                style={tw`w-full justify-center items-center h-full rounded-2xl border border-[${String(tw.color(getIconColor(index).replace("-500", "-100")))}]`}>
+                                <Ionicons name={getIconName(type.name)} size={45} color={String(tw.color(getIconColor(index)))} />
+                            </LinearGradient>
+                        </TouchableOpacity>
+                        <TextTheme size='xs' style={tw`text-center`}>{type.name}</TextTheme>
+                    </View>
+                ))}
+            </View>
+        </View>
+    )
+}
 
 const PopularPlace: React.FC<{
     image: string;
@@ -191,7 +193,23 @@ const HomeScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const { refreshUserData } = useFetchMeContext();
 
-    // Handle refresh
+    // Fetch location types
+    const fetchLocationTypes = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await api.get("/api/locations/types");
+            if (response.data.success && response.data.location_type) {
+                setLocationTypes(response.data.location_type);
+            }
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message, true);
+            });
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await Promise.all([
@@ -201,19 +219,6 @@ const HomeScreen: React.FC = () => {
         setRefreshing(false);
     }, []);
 
-    // Fetch location types
-    const fetchLocationTypes = async () => {
-        try {
-            const response = await api.get("/api/locations/types");
-            if (response.data.success) {
-                setLocationTypes(response.data.location_type);
-            }
-        } catch (error) {
-            handleAxiosError(error, handleErrorMessage);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     useEffect(() => {
         fetchLocationTypes();
@@ -250,7 +255,7 @@ const HomeScreen: React.FC = () => {
                 </LinearGradient>
 
                 <View style={tw`px-5 py-3`}>
-                    <TextTheme font="Prompt-Bold" size="2xl" style={tw`text-gray-900 mb-2`}>
+                    <TextTheme font="Prompt-Bold" size="2xl" style={tw`text-gray-900`}>
                         เที่ยวแม่ออน
                     </TextTheme>
                     <TextTheme size="base" style={tw`text-gray-600 mb-4`}>
@@ -273,41 +278,36 @@ const HomeScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Categories */}
                 {!loading && (
                     <View style={tw`px-5`}>
-                        <View style={tw`flex-row justify-between items-center mb-4`}>
-                            <TextTheme font="Prompt-Bold" size="lg">หมวดหมู่</TextTheme>
-                            <TouchableOpacity style={tw`flex-row items-center gap-1`}>
-                                <TextTheme color="blue-500">ดูทั้งหมด</TextTheme>
-                                <MaterialCommunityIcons
-                                    name="chevron-right"
-                                    size={20}
-                                    color={String(tw.color("blue-500"))}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={tw``}>
-                            {/* {locationTypes.map((type, index) => {
-                                return (
-                                    <CategoryButton
-                                        key={type.id}
-                                        icon={getIconName(type.name)}
-                                        label={type.name}
-                                        color={getIconColor(index)}
-                                        onPress={() => console.log(type.name)}
-                                    />
-                                )
-                            })} */}
-                        </View>
+                        <TextTheme font="Prompt-Bold" size="lg" style={tw`mb-2`}>หมวดหมู่</TextTheme>
+                        <CategoryButton locationTypes={locationTypes} />
                     </View>
                 )}
+                <View style={tw`flex-row flex-1 justify-between mx-5`}>
+                    <TextTheme font="Prompt-Bold" size="lg" style={tw`mb-2`}>ข่าวสาร</TextTheme>
+                    <TouchableOpacity style={tw`flex-row items-center gap-1`}>
+                        <TextTheme color="blue-500">ดูเพิ่มเติม</TextTheme>
+                        <Ionicons
+                            name="chevron-forward"
+                            size={20}
+                            color={String(tw.color("blue-500"))}
+                        />
+                    </TouchableOpacity>
+                </View>
+                <Carousel pageControlProps={{ size: 6, spacing: 8 }} pageWidth={200} style={tw`mt-2`}>
+                    {popularTours.map((tour, index) => (
+                        <View key={`tour-${index}`} style={tw`rounded-xl h-50 relative`}>
+                            <Image source={{ uri: tour.image }} style={tw`w-full h-50 rounded-2xl`} />
+                            <BlurView intensity={10} style={tw`absolute bottom-2 left-2 px-2 rounded-xl overflow-hidden`}>
+                                <TextTheme font="Prompt-Medium" size="lg" color='white'>{tour.name}</TextTheme>
+                            </BlurView>
+                        </View>
+                    ))}
+                </Carousel>
 
-                {/* Popular Places */}
                 <View style={tw`px-5 mt-6`}>
-                    <TextTheme font="Prompt-Bold" size="lg" style={tw`mb-4`}>
-                        แนะนำสำหรับคุณ
-                    </TextTheme>
+                    <TextTheme font="Prompt-Bold" size="lg" style={tw`mb-2`}>แนะนำสำหรับคุณ</TextTheme>
                     {popularTours.map((tour, index) => (
                         <PopularPlace
                             key={index}
@@ -316,6 +316,7 @@ const HomeScreen: React.FC = () => {
                         />
                     ))}
                 </View>
+
 
                 <View style={tw`h-20`} />
             </ScrollView>

@@ -37,7 +37,7 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
     const [isLogin, setIsLogin] = useState<boolean>(false);
 
     const userDataRef = useRef<Users | null>(null);
-    const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isFetchingRef = useRef<boolean>(false);
 
     const fetchUserProfile = useCallback(async (profile: string) => {
@@ -109,17 +109,15 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
         try {
             const { login } = await checkLoginStatus();
             if (login) {
-                const newUserData = await fetchUserData();
 
+                const newUserData = await fetchUserData();
                 if (!isEqual(newUserData, userDataRef.current)) {
                     setUserData(newUserData);
                     userDataRef.current = newUserData;
-
                     // ลบการเรียก roleNavigation ออกจากที่นี่
                     // if (newUserData.role) {
                     //     roleNavigation(newUserData.role)
                     // }
-
                     if (newUserData?.profile_picture) {
                         await fetchUserProfile(newUserData.profile_picture);
                     }

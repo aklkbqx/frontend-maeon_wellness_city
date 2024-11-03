@@ -48,7 +48,6 @@ const AccountSetting: React.FC = () => {
         profileImageUrl
     } = useFetchMeContext();
 
-    // เก็บโค้ดส่วน Logic ทั้งหมดเหมือนเดิม
     const setDefaultUserData = useCallback((user: Users) => {
         setFormDataInput({
             firstname: user.firstname || '',
@@ -60,7 +59,6 @@ const AccountSetting: React.FC = () => {
         });
     }, []);
 
-    // คง Effects ทั้งหมดเหมือนเดิม
     useFocusEffect(
         React.useCallback(() => {
             initializeUserData();

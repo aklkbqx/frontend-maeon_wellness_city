@@ -205,7 +205,7 @@ export const getNotificationIcon = (type: notifications_type): keyof typeof Ioni
       return 'sync-outline';
     case notifications_type.REMINDER:
       return 'alarm-outline';
-    case 'ALL':
+    case 'ALL' as any:
       return 'notifications-outline';
     default:
       return 'notifications-outline';
@@ -230,7 +230,7 @@ export const getNotificationTypeLabel = (type: notifications_type): string => {
       return 'อัพเดทสถานะ';
     case notifications_type.REMINDER:
       return 'แจ้งเตือน';
-    case 'ALL':
+    case 'ALL' as any:
       return 'ทั้งหมด';
     default:
       return 'อื่นๆ';
@@ -255,7 +255,7 @@ export const getNotificationColor = (type: notifications_type): string => {
       return 'bg-teal-500';
     case notifications_type.REMINDER:
       return 'bg-red-500';
-    case 'ALL':
+    case 'ALL' as any:
       return 'bg-blue-500';
     default:
       return 'bg-gray-500';

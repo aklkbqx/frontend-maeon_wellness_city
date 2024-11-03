@@ -19,6 +19,9 @@ import { BANK_RECEIVER } from '@/constants/payments';
 import { useNotification } from '@/context/NotificationProvider';
 import { Payments, Users } from '@/types/PrismaType';
 import { notifications_type } from '@/types/notifications';
+import axios from 'axios';
+
+const KEY_OPENSLIP = process.env.EXPO_PUBLIC_KEY_OPENSLIP;
 
 interface Activity {
     sequence: number;
@@ -81,6 +84,7 @@ const Payment = () => {
     const [loading2, setLoading2] = useState<boolean>(false);
     const [isConfirming, setIsConfirming] = useState<boolean>(false);
     const [resetSlip, setResetSlip] = useState<boolean>(false);
+    const [refNbr, setRefNbr] = useState<string | null>(null);
 
     const fetchBookingData = useCallback(async (id: number) => {
         setLoading(true);
@@ -190,97 +194,153 @@ const Payment = () => {
         }
     };
 
+    const getrefNbrInQrcode = async (slipImage: string) => {
+        const formData = new FormData();
+        formData.append('file', {
+            uri: slipImage,
+            type: 'image/jpeg',
+            name: 'slip.jpg',
+        } as any);
+
+        try {
+            const qrserver = await axios.post("http://api.qrserver.com/v1/read-qr-code/", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                }
+            });
+
+            if (qrserver.data) {
+                return qrserver.data[0].symbol[0].data
+            } else {
+                throw new Error("ไม่สามารถอ่านข้อมูลของ QR Code ของคุณได้ กรุณาทำการอัพโหลดสลิปมาอีกครั้ง")
+            }
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message);
+            })
+        }
+    }
+
+
+    const checkSlip = async (refNbr: string, amount: number, token: string) => {
+        console.log(refNbr,
+            amount,
+            token);
+        try {
+            const response = await axios.post("https://api.openslipverify.com/", {
+                refNbr,
+                amount,
+                token
+            }, {
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (!response.data) {
+                throw new Error(response.data.msg);
+            }
+
+            return response.data;
+        } catch (error) {
+            console.error("Error checking slip:", error);
+            return {
+                success: false,
+                message: "เกิดข้อผิดพลาดในการตรวจสอบสลิป"
+            };
+        }
+    };
+
     const handleConfirmPayment = async (slipImage: string) => {
         setIsConfirming(true);
         useShowToast("info", "กรุณารอ", "กำลังตรวจสอบการชำระเงินของคุณ...");
         try {
-            const formData = new FormData();
-            formData.append('booking_id', bookingData?.id.toString() as string);
-            formData.append('slip', {
-                uri: slipImage,
-                type: 'image/jpeg',
-                name: 'slip.jpg',
-            } as any);
-
-            const response = await api.post("/api/payments/confirm-payment", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-
-            if (response.data.resetSlip) {
-                setLoading2(false);
-                setIsConfirming(false)
-                Toast.hide()
-                setTimeout(() => {
-                    setResetSlip(true)
-                    useShowToast("info", "กรุณารอ..", response.data.message);
-                }, 100)
-                try {
-                    const resetResponse = await api.post("/api/payments/reset-slip-check-count", null, {
-                        timeout: 60000
-                    });
-
-                    if (resetResponse.data.success) {
-                        await handleConfirmPayment(slipImage);
-                    } else {
-                        throw new Error(resetResponse.data.message);
-                    }
-                } catch (error) {
-                    handleErrorMessage(`ไม่สามารถ reset credit ได้ (${error}) กรุณาแจ้งเจ้าหน้าที่`);
-                } finally {
-                    setLoading2(false);
-                }
-                return;
-            } else {
-                if (response.data.success) {
-                    Toast.hide();
-                    if (userData?.id && bookingData) {
-                        const notificationData = {
-                            type: notifications_type.PAYMENT,
-                            title: "ชำระเงินสำเร็จ",
-                            body: `การชำระเงินของคุณสำเร็จแล้ว จำนวน ฿${addCommas(bookingData.total_price)} บาท`,
-                            receive: {
-                                userId: userData.id,
-                                all: false,
-                                role: "admin"
-                            },
-                            data: {
-                                link: {
-                                    pathname: `/payments/success`,
-                                    params: {
-                                        bookingId: bookingData.id
-                                    }
-                                }
-                            }
-                        };
-                        if (!wsConnected) {
-                            reconnect();
-                            sendWebSocketNotification(notificationData);
-                        } else {
-                            sendWebSocketNotification(notificationData);
-                        }
-                    }
-
-                    setShowQRCode(false);
-                    setIsConfirming(false);
-
-                    router.navigate({
-                        pathname: "/user/payments/success",
-                        params: {
-                            bookingId
-                        }
-                    });
+            try {
+                const resetResponse = await api.post("/api/payments/reset-slip-check-count", null, {
+                    timeout: 60000
+                });
+                if (resetResponse.data.success) {
+                    console.log(resetResponse.data);
+                    // await handleConfirmPayment(slipImage);
                 } else {
-                    handleErrorMessage(response.data.message || "ไม่สามารถยืนยันการชำระเงินได้ กรุณาลองใหม่อีกครั้ง");
+                    throw new Error(resetResponse.data.message);
                 }
+            } catch (error) {
+                // TODO ถ้าเกิด error ให้ยิงไปแบบ manual
+                // handleErrorMessage(`ไม่สามารถ reset credit ได้ (${error}) กรุณาแจ้งเจ้าหน้าที่`);
+            } finally {
+                setLoading2(false);
             }
+            // const formData = new FormData();
+            // formData.append('booking_id', bookingData?.id.toString() as string);
+
+            // const refNbr = await getrefNbrInQrcode(slipImage);
+            // // refNbr
+            // if (refNbr && bookingData?.total_price && KEY_OPENSLIP) {
+            //     const datacheckslip = await checkSlip(refNbr, Number(bookingData?.total_price as string), KEY_OPENSLIP);
+            //     console.log(datacheckslip);
+            // } else {
+            //     throw new Error("ไม่สามารถดำเนินการตรวจสอบได้ กรุณาลองใหม่อีกครั้ง");
+            // }
+            // const response = await api.post("/api/payments/confirm-payment", formData, {
+            //     headers: {
+            //         'Content-Type': 'multipart/form-data',
+            //     },
+            // });
+
+            // if (response.data.resetSlip) {
+            //     setLoading2(false);
+            //     setIsConfirming(false)
+            //     Toast.hide()
+            //     setTimeout(() => {
+            //         setResetSlip(true)
+            //         useShowToast("info", "กรุณารอ..", response.data.message);
+            //     }, 100)
+            // try {
+            //     const resetResponse = await api.post("/api/payments/reset-slip-check-count", null, {
+            //         timeout: 60000
+            //     });
+
+            //     if (resetResponse.data.success) {
+            //         await handleConfirmPayment(slipImage);
+            //     } else {
+            //         throw new Error(resetResponse.data.message);
+            //     }
+            // } catch (error) {
+            //     handleErrorMessage(`ไม่สามารถ reset credit ได้ (${error}) กรุณาแจ้งเจ้าหน้าที่`);
+            // } finally {
+            //     setLoading2(false);
+            // }
+            //     return;
+            // } else {
+            //     if (response.data.success) {
+            //         Toast.hide();
+            //         if (userData?.id && bookingData) {
+            //             if (!wsConnected) {
+            //                 reconnect();
+            //             }
+            //         }
+            //         setShowQRCode(false);
+            //         setIsConfirming(false);
+
+            //         router.navigate({
+            //             pathname: "/user/payments/success",
+            //             params: {
+            //                 bookingId
+            //             }
+            //         });
+            //     } else {
+            //         handleErrorMessage(response.data.message || "ไม่สามารถยืนยันการชำระเงินได้ กรุณาลองใหม่อีกครั้ง");
+            //     }
+            // }
 
         } catch (error) {
             setIsConfirming(false);
             handleAxiosError(error, (message) => {
                 handleErrorMessage(message);
             });
+        } finally {
+            setIsConfirming(false);
         }
     };
 

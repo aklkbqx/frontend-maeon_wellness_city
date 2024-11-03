@@ -12,7 +12,5 @@ web-build/
 
 # macOS
 .DS_Store
-
-
-
-.env
+/test-results/
+/blob-report/
