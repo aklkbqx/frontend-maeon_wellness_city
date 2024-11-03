@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import tw from 'twrnc';
 import { handleAxiosError, handleErrorMessage } from '@/helper/my-lib';
@@ -10,13 +10,15 @@ import Animated, {
     useAnimatedScrollHandler,
     useAnimatedStyle,
     interpolate,
+    useAnimatedRef,
+    runOnJS,
 } from 'react-native-reanimated';
 import { TabController, View, TouchableOpacity } from 'react-native-ui-lib';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStatusBar } from '@/hooks/useStatusBar';
 import api, { apiUrl } from '@/helper/api';
-import { ScrollView } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 
 interface BookingItem {
@@ -60,6 +62,11 @@ interface ProgramDetail {
     status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
     wellness_dimensions?: string[];
     images?: string[];
+}
+
+interface ProgramTabsProps {
+    programDetail: ProgramDetail;
+    scrollY: Animated.SharedValue<number>;
 }
 
 const DetailProgramScreen: React.FC = () => {
@@ -191,15 +198,12 @@ const DetailProgramScreen: React.FC = () => {
                 )
             }} />
 
-            <View style={tw`flex-1`}>
+            <View style={tw`flex-1 bg-white pb-20`}>
                 <Animated.ScrollView
-                    style={tw`flex-1`}
                     onScroll={scrollHandler}
                     scrollEventThrottle={16}
-                    stickyHeaderIndices={[1]}
-                    contentContainerStyle={tw`pb-20`}
                     nestedScrollEnabled
-                    scrollEnabled
+                    showsVerticalScrollIndicator={false}
                 >
                     {firstImageName && (
                         <Animated.Image
@@ -207,8 +211,21 @@ const DetailProgramScreen: React.FC = () => {
                             source={{ uri: `${apiUrl}/images/program_images/${firstImageName}` }}
                         />
                     )}
-                    {programDetail && <ProgramTabs programDetail={programDetail} scrollY={scrollY} />}
+                    {programDetail && (
+                        <ProgramTabs
+                            programDetail={programDetail}
+                            scrollY={scrollY}
+                        />
+                    )}
                 </Animated.ScrollView>
+                {/* {programDetail && (
+                    <ProgramTabs
+                        programDetail={programDetail}
+                        scrollY={scrollY}
+                        mainScrollEnabled={mainScrollEnabled}
+                        mainScrollRef={mainScrollRef}
+                    />
+                )} */}
 
                 <View style={tw`p-5 absolute bottom-2 left-0 right-0`}>
                     <TouchableOpacity onPress={selectThisProgram}>
@@ -272,30 +289,11 @@ const ActivityCard: React.FC<{ activity: any; isLast: boolean }> = ({ activity, 
     </View>
 );
 
-const ProgramTabs: React.FC<{ programDetail: ProgramDetail }> = ({ programDetail }) => {
+const ProgramTabs: React.FC<ProgramTabsProps> = ({
+    programDetail,
+    scrollY,
+}) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-
-    const [isScrolled, setIsScrolled] = useState(false);
-
-    const handleScroll = (event: any) => {
-        const scrollY = event.nativeEvent.contentOffset.y;
-        setIsScrolled(scrollY > 10);
-    };
-    const renderTabBar = () => (
-        <Animated.View
-            style={[
-                tw`absolute top-0 left-0 right-0 z-50`,
-            ]}
-        >
-            <TabController.TabBar
-                backgroundColor="white"
-                labelStyle={{ fontFamily: "Prompt-Regular" }}
-                selectedLabelStyle={{ fontFamily: "Prompt-SemiBold" }}
-                selectedLabelColor={String(tw.color("blue-500"))}
-                indicatorStyle={tw`bg-blue-500 h-1 rounded-full`}
-            />
-        </Animated.View>
-    );
 
     const renderOverview = () => {
         const schedulesByDay = useMemo(() => {
@@ -310,13 +308,7 @@ const ProgramTabs: React.FC<{ programDetail: ProgramDetail }> = ({ programDetail
         }, [programDetail.schedules]);
 
         return (
-            <ScrollView
-                style={tw`flex-1 bg-gray-50`}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={tw`pb-32`}
-                scrollEventThrottle={16}
-                bounces={false}
-            >
+            <View style={tw`flex-1`}>
                 {/* Program Header */}
                 <View style={tw`bg-white p-5 mb-2`}>
                     <View style={tw`flex-row items-center gap-2 mb-2`}>
@@ -340,7 +332,6 @@ const ProgramTabs: React.FC<{ programDetail: ProgramDetail }> = ({ programDetail
                         {programDetail.description}
                     </TextTheme>
 
-                    {/* Price Section */}
                     <View style={tw`mt-4 p-4 bg-gray-50 rounded-xl`}>
                         <View style={tw`flex-row justify-between items-center`}>
                             <TextTheme font="Prompt-Medium">ราคาโปรแกรม</TextTheme>
@@ -351,7 +342,6 @@ const ProgramTabs: React.FC<{ programDetail: ProgramDetail }> = ({ programDetail
                     </View>
                 </View>
 
-                {/* Schedule Section */}
                 <View style={tw`bg-white`}>
                     <View style={tw`px-5 py-4 border-b border-gray-100`}>
                         <TextTheme font="Prompt-Bold" size="lg">กำหนดการ</TextTheme>
@@ -379,26 +369,26 @@ const ProgramTabs: React.FC<{ programDetail: ProgramDetail }> = ({ programDetail
                         </View>
                     ))}
                 </View>
-            </ScrollView>
+            </View>
         );
     };
 
     const renderDetails = () => {
         const details = [
             {
-                icon: 'clock-outline',
-                title: 'ประเภทโปรแกรม',
+                icon: 'clock-outline' as keyof typeof MaterialCommunityIcons.glyphMap,
+                title: 'ประเภทโปรแกรม' as keyof typeof MaterialCommunityIcons.glyphMap,
                 value: programDetail.type === 1 ? 'โปรแกรมระยะสั้น' : 'โปรแกรมระยะยาว',
                 color: 'blue'
             },
             {
-                icon: 'calendar-range',
+                icon: 'calendar-range' as keyof typeof MaterialCommunityIcons.glyphMap,
                 title: 'ระยะเวลา',
                 value: `${programDetail.duration_days} วัน`,
                 color: 'green'
             },
             {
-                icon: 'heart-pulse',
+                icon: 'heart-pulse' as keyof typeof MaterialCommunityIcons.glyphMap,
                 title: 'มิติสุขภาวะ',
                 value: programDetail.wellness_dimensions?.join(', ') || '-',
                 color: 'rose'
@@ -439,26 +429,32 @@ const ProgramTabs: React.FC<{ programDetail: ProgramDetail }> = ({ programDetail
 
     return (
         <View style={tw`flex-1 bg-white -mt-6 rounded-t-3xl overflow-hidden`}>
+            {/* TabController section */}
             <TabController
                 asCarousel
                 items={[
-                    { label: 'ภาพรวม', key: 'overview' },
-                    { label: 'ข้อมูลเพิ่มเติม', key: 'details' }
+                    { label: 'ภาพรวม' },
+                    { label: 'ข้อมูลเพิ่มเติม' }
                 ]}
                 initialIndex={selectedIndex}
                 onChangeIndex={setSelectedIndex}
             >
-                {renderTabBar()}
-                <View style={tw`flex-1`}>
-                    <TabController.PageCarousel>
-                        <TabController.TabPage index={0} lazy>
-                            {renderOverview()}
-                        </TabController.TabPage>
-                        <TabController.TabPage index={1} lazy>
-                            {renderDetails()}
-                        </TabController.TabPage>
-                    </TabController.PageCarousel>
-                </View>
+                <TabController.TabBar
+                    backgroundColor="white"
+                    labelStyle={{ fontFamily: "Prompt-Regular" }}
+                    selectedLabelStyle={{ fontFamily: "Prompt-SemiBold" }}
+                    selectedLabelColor={String(tw.color("blue-500"))}
+                    indicatorStyle={tw`bg-blue-500 h-1 rounded-full`}
+                />
+
+                <TabController.PageCarousel>
+                    <TabController.TabPage index={0}>
+                        {renderOverview()}
+                    </TabController.TabPage>
+                    <TabController.TabPage index={1}>
+                        {renderDetails()}
+                    </TabController.TabPage>
+                </TabController.PageCarousel>
             </TabController>
         </View>
     );
