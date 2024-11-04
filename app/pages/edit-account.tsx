@@ -18,6 +18,7 @@ import OverlayComponents from '@/components/edit-account/OverlayComponents';
 import { Users } from '@/types/PrismaType';
 import { FormDataInput } from '@/types/types';
 import { useFetchMeContext } from '@/context/FetchMeContext';
+import Loading from '@/components/Loading';
 
 interface PreparedImage {
     uri: string;
@@ -69,7 +70,7 @@ const AccountSetting: React.FC = () => {
         if (userData) {
             setDefaultUserData(userData);
         }
-    }, []);
+    }, [userData]);
 
     useEffect(() => {
         setPasswordsMatch(formDataInput.newPassword === formDataInput.confirmPassword);
@@ -203,6 +204,17 @@ const AccountSetting: React.FC = () => {
         }
         return tw`${baseStyle}`;
     };
+
+    if (!userData) {
+        return (
+            <View style={tw`flex-col flex-1 justify-center items-center`}>
+                <View style={tw`bg-blue-500/10 rounded-xl p-3`}>
+                    <Loading loading />
+                    <TextTheme>กำลังโหลด...</TextTheme>
+                </View>
+            </View>
+        )
+    }
 
     return (
         <>

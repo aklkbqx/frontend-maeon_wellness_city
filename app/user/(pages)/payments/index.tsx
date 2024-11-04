@@ -220,7 +220,7 @@ const Payment = () => {
 
     const checkSlip = async (refNbr: string, amount: number, token: string) => {
         try {
-            const response = await axios.post("https://api.openslipverifya.com/", {
+            const response = await axios.post("https://api.openslipverify.com/", {
                 refNbr,
                 amount,
                 token
@@ -249,10 +249,13 @@ const Payment = () => {
                     }
                 }
             }
+        } finally {
+            setIsConfirming(false);
         }
     };
 
     const handleConfirmPayment = async (slipImage: string) => {
+        setError(null)
         setIsConfirming(true);
         useShowToast("info", "กรุณารอ", "กำลังตรวจสอบการชำระเงินของคุณ...");
         try {
