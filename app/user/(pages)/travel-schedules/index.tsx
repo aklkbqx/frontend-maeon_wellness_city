@@ -112,7 +112,7 @@ const BookingButton: React.FC<BookingButtonProps> = ({
       {/* Summary Container */}
       <View style={tw`mb-3 p-3 bg-gray-50 rounded-xl`}>
         {/* Date Range */}
-        <View style={tw`flex-row items-center justify-between mb-2`}>
+        <View style={tw`flex-row items-center justify-between mb-2 gap-2`}>
           <TextTheme font="Prompt-Medium" size="sm" style={tw`text-gray-600`}>
             ระยะเวลา
           </TextTheme>

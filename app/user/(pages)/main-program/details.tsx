@@ -69,6 +69,55 @@ interface ProgramTabsProps {
     scrollY: Animated.SharedValue<number>;
 }
 
+export const OptimizedAnimatedImage: React.FC<{
+    source: { uri: string };
+    style?: any;
+    animatedStyle?: any;
+}> = ({ source, style, animatedStyle }) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
+    return (
+        <View style={tw`relative`}>
+            <Animated.Image
+                source={source}
+                style={[style, animatedStyle, hasError && tw`bg-gray-100`]}
+                onLoad={() => setIsLoading(false)}
+                onError={() => {
+                    setIsLoading(false);
+                    setHasError(true);
+                }}
+            />
+            {isLoading && (
+                <Animated.View
+                    style={[
+                        tw`absolute inset-0 bg-gray-100 items-center justify-center`,
+                        style,
+                        animatedStyle
+                    ]}
+                >
+                    <Loading loading />
+                </Animated.View>
+            )}
+            {hasError && (
+                <Animated.View
+                    style={[
+                        tw`absolute inset-0 bg-gray-100 items-center justify-center`,
+                        style,
+                        animatedStyle
+                    ]}
+                >
+                    <MaterialCommunityIcons
+                        name="image-off"
+                        size={24}
+                        color={tw.color('gray-400')}
+                    />
+                </Animated.View>
+            )}
+        </View>
+    );
+};
+
 const DetailProgramScreen: React.FC = () => {
     useStatusBar("light-content");
     const { programId, bookingData, dateSelected } = useLocalSearchParams();
@@ -206,9 +255,10 @@ const DetailProgramScreen: React.FC = () => {
                     showsVerticalScrollIndicator={false}
                 >
                     {firstImageName && (
-                        <Animated.Image
-                            style={[{ height: IMAGE_HEIGHT, width: IMAGE_WIDTH }, imageAnimatedStyle]}
+                        <OptimizedAnimatedImage
                             source={{ uri: `${apiUrl}/images/program_images/${firstImageName}` }}
+                            style={{ height: IMAGE_HEIGHT, width: IMAGE_WIDTH }}
+                            animatedStyle={imageAnimatedStyle}
                         />
                     )}
                     {programDetail && (
@@ -308,7 +358,7 @@ const ProgramTabs: React.FC<ProgramTabsProps> = ({
         }, [programDetail.schedules]);
 
         return (
-            <View style={tw`flex-1`}>
+            <Animatable.View animation={"fadeInUp"} style={tw`flex-1`}>
                 {/* Program Header */}
                 <View style={tw`bg-white p-5 mb-2`}>
                     <View style={tw`flex-row items-center gap-2 mb-2`}>
@@ -369,7 +419,7 @@ const ProgramTabs: React.FC<ProgramTabsProps> = ({
                         </View>
                     ))}
                 </View>
-            </View>
+            </Animatable.View>
         );
     };
 
@@ -448,10 +498,10 @@ const ProgramTabs: React.FC<ProgramTabsProps> = ({
                 />
 
                 <TabController.PageCarousel>
-                    <TabController.TabPage index={0}>
+                    <TabController.TabPage index={0} lazy>
                         {renderOverview()}
                     </TabController.TabPage>
-                    <TabController.TabPage index={1}>
+                    <TabController.TabPage index={1} lazy>
                         {renderDetails()}
                     </TabController.TabPage>
                 </TabController.PageCarousel>

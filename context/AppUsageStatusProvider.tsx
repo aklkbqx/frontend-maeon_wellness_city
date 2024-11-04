@@ -26,16 +26,16 @@ const AppUsageStatusProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         const subscription = AppState.addEventListener('change', nextAppState => {
             if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-                updateUserStatus("ONLINE");
+                setTimeout(() => updateUserStatus("ONLINE"), 5000)
             } else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
-                updateUserStatus("OFFLINE");
+                setTimeout(() => updateUserStatus("OFFLINE"), 5000)
             }
 
             appState.current = nextAppState;
         });
 
         return () => {
-            subscription.remove();
+            setTimeout(() => subscription.remove(), 5000)
         };
 
     }, [isLogin]);

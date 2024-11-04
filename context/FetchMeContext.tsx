@@ -5,11 +5,24 @@ import { Users } from '@/types/PrismaType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userTokenLogin } from '@/helper/my-lib';
 import isEqual from 'lodash/isEqual';
-import useRoleNavigation from '@/hooks/useRoleNavigation';
 import { router } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
+import useRoleNavigation from '@/hooks/useRoleNavigation';
+
+api.defaults.timeout = 15000;
 
 // TODO optimize code 
 
+const withRetry = async (fn: () => Promise<any>, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            if (i === maxRetries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i))); // exponential backoff
+        }
+    }
+};
 interface UserContextType {
     userData: Users | null;
     setUserData: (data: Users | null) => void;
@@ -29,16 +42,25 @@ interface UserProviderProps {
 }
 
 export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
-    const roleNavigation = useRoleNavigation()
-
     const [userData, setUserData] = useState<Users | null>(null);
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isLogin, setIsLogin] = useState<boolean>(false);
+    const [isConnected, setIsConnected] = useState<boolean>(true);
 
     const userDataRef = useRef<Users | null>(null);
-    const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const loadingTimeoutRef = useRef<any>(null);
     const isFetchingRef = useRef<boolean>(false);
+
+
+    useEffect(() => {
+        const unsubscribe = NetInfo.addEventListener(state => {
+            setIsConnected(state.isConnected ?? false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
 
     const fetchUserProfile = useCallback(async (profile: string) => {
         try {
@@ -51,21 +73,24 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
     }, []);
 
     const fetchUserData = useCallback(async () => {
-        return new Promise<Users>((resolve, reject) =>
-            api.get('/api/users/me')
-                .then(response => {
-                    resolve(response.data);
-                }).catch(error => {
-                    handleAxiosError(error, (message) => {
-                        handleErrorMessage(message);
-                        if (message === "authenticator fail") {
-                            logout()
-                        }
-                    });
-                    reject(error);
-                })
-        );
-    }, []);
+        if (!isConnected) {
+            throw new Error("ไม่มีการเชื่อมต่ออินเทอร์เน็ต");
+        }
+
+        return withRetry(async () => {
+            try {
+                const response = await api.get('/api/users/me');
+                return response.data;
+            } catch (error) {
+                handleAxiosError(error, (message) => {
+                    if (message === "authenticator fail") {
+                        logout();
+                    }
+                });
+                throw error;
+            }
+        });
+    }, [isConnected]);
 
     const checkLoginStatus = useCallback(async () => {
         const token = await AsyncStorage.getItem(userTokenLogin);
@@ -92,7 +117,7 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
             userDataRef.current = null;
             setProfileImageUrl(null);
             setIsLogin(false);
-        } finally{
+        } finally {
             router.replace("/logout");
         }
     }, []);
@@ -145,6 +170,7 @@ export const FetchMeProvider: React.FC<UserProviderProps> = ({ children }) => {
     const refreshUserData = useCallback(async () => {
         await initializeUserData();
     }, [initializeUserData]);
+
 
     useEffect(() => {
         checkLoginStatus();

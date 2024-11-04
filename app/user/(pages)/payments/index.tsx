@@ -17,8 +17,7 @@ import { useFetchMeContext } from '@/context/FetchMeContext';
 import Toast from "react-native-toast-message";
 import { BANK_RECEIVER } from '@/constants/payments';
 import { useNotification } from '@/context/NotificationProvider';
-import { Payments, Users } from '@/types/PrismaType';
-import { notifications_type } from '@/types/notifications';
+import { Payments } from '@/types/PrismaType';
 import axios from 'axios';
 
 const KEY_OPENSLIP = process.env.EXPO_PUBLIC_KEY_OPENSLIP;
@@ -84,7 +83,7 @@ const Payment = () => {
     const [loading2, setLoading2] = useState<boolean>(false);
     const [isConfirming, setIsConfirming] = useState<boolean>(false);
     const [resetSlip, setResetSlip] = useState<boolean>(false);
-    const [refNbr, setRefNbr] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchBookingData = useCallback(async (id: number) => {
         setLoading(true);
@@ -127,14 +126,10 @@ const Payment = () => {
             } else {
                 handleErrorMessage("ไม่พบการจองของคุณกรุณาทำการจองใหม่อีกครั้ง", true);
             }
-        }, [])
+        }, [bookingId])
     );
 
-    const selectPaymentMethod = (item: PaymentMethod) => {
-        setOnSelectPaymentMethod(item);
-    };
-
-    const choosePaymentMethod = async () => {
+    const choosePaymentMethod = async (paymentMethod: PaymentMethod) => {
         Toast.hide()
         try {
             const response = await api.put("/api/payments/initiate-payment", {
@@ -143,6 +138,7 @@ const Payment = () => {
             });
             if (response.data.success) {
                 useShowToast("success", "สำเร็จ", "เปลี่ยนการชำระเงินแล้ว")
+                setPaymentMethod(paymentMethod)
             } else {
                 handleErrorMessage(response.data.message || "ไม่สามารถเลือกการชำระเงินได้");
             }
@@ -157,13 +153,13 @@ const Payment = () => {
         }
     }
 
+
     const confirmPaymentMethod = useCallback(async () => {
-        setDialogPaymentOption(false);
         if (onSelectPaymentMethod) {
-            setPaymentMethod(onSelectPaymentMethod);
-            if (paymentMethod) {
-                choosePaymentMethod();
-            }
+            choosePaymentMethod(onSelectPaymentMethod);
+            setDialogPaymentOption(false);
+        } else {
+            setDialogPaymentOption(false);
         }
     }, [onSelectPaymentMethod, paymentMethod]);
 
@@ -223,11 +219,8 @@ const Payment = () => {
 
 
     const checkSlip = async (refNbr: string, amount: number, token: string) => {
-        console.log(refNbr,
-            amount,
-            token);
         try {
-            const response = await axios.post("https://api.openslipverify.com/", {
+            const response = await axios.post("https://api.openslipverifya.com/", {
                 refNbr,
                 amount,
                 token
@@ -240,14 +233,22 @@ const Payment = () => {
             if (!response.data) {
                 throw new Error(response.data.msg);
             }
-
             return response.data;
-        } catch (error) {
-            console.error("Error checking slip:", error);
-            return {
-                success: false,
-                message: "เกิดข้อผิดพลาดในการตรวจสอบสลิป"
-            };
+        } catch (error: any) {
+            if (axios.isAxiosError(error)) {
+                const axiosError = error
+                if (axiosError.response) {
+                    useShowToast("error", "เกิดข้อผิดพลาด", axiosError.response.data.msg)
+                    setError(axiosError.response.data.msg);
+                    return {
+                        success: true
+                    }
+                } else {
+                    return {
+                        success: false
+                    }
+                }
+            }
         }
     };
 
@@ -256,11 +257,46 @@ const Payment = () => {
         useShowToast("info", "กรุณารอ", "กำลังตรวจสอบการชำระเงินของคุณ...");
         try {
             try {
-                const resetResponse = await api.post("/api/payments/reset-slip-check-count", null, {
-                    timeout: 60000
-                });
+                const resetResponse = await api.post("/api/payments/check-count");
                 if (resetResponse.data.success) {
-                    console.log(resetResponse.data);
+                    const refNbr = await getrefNbrInQrcode(slipImage);
+                    if (refNbr && bookingData?.total_price && KEY_OPENSLIP) {
+                        const datacheckslip = await checkSlip(refNbr, Number(bookingData?.total_price as string), KEY_OPENSLIP);
+                        const typeConfirm = datacheckslip.success ? "checked" : "manual";
+                        console.log(typeConfirm);
+
+                        const formData = new FormData();
+                        formData.append('slip', {
+                            uri: slipImage,
+                            type: 'image/jpeg',
+                            name: 'slip.jpg',
+                        } as any);
+                        formData.append('booking_id', bookingData?.id.toString() as string);
+                        formData.append("typeConfirm", typeConfirm)
+                        formData.append("datacheckslip", JSON.stringify(datacheckslip))
+                        formData.append("refNbr", refNbr)
+                        const response = await api.post("/api/payments/confirm-payment", formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                            },
+                        });
+                        if (response.data.success) {
+                            setShowQRCode(false);
+                            setIsConfirming(false);
+                            console.log(response.data);
+
+                            router.navigate({
+                                pathname: "/user/payments/receipt",
+                                params: {
+                                    bookingId
+                                }
+                            });
+                        } else {
+                            throw new Error(response.data.message || "ไม่สามารถยืนยันการชำระเงินได้ กรุณาลองใหม่อีกครั้ง")
+                        }
+                    } else {
+                        throw new Error("ไม่สามารถดำเนินการตรวจสอบได้ กรุณาลองใหม่อีกครั้ง");
+                    }
                     // await handleConfirmPayment(slipImage);
                 } else {
                     throw new Error(resetResponse.data.message);
@@ -271,22 +307,9 @@ const Payment = () => {
             } finally {
                 setLoading2(false);
             }
-            // const formData = new FormData();
-            // formData.append('booking_id', bookingData?.id.toString() as string);
 
-            // const refNbr = await getrefNbrInQrcode(slipImage);
-            // // refNbr
-            // if (refNbr && bookingData?.total_price && KEY_OPENSLIP) {
-            //     const datacheckslip = await checkSlip(refNbr, Number(bookingData?.total_price as string), KEY_OPENSLIP);
-            //     console.log(datacheckslip);
-            // } else {
-            //     throw new Error("ไม่สามารถดำเนินการตรวจสอบได้ กรุณาลองใหม่อีกครั้ง");
-            // }
-            // const response = await api.post("/api/payments/confirm-payment", formData, {
-            //     headers: {
-            //         'Content-Type': 'multipart/form-data',
-            //     },
-            // });
+            // refNbr
+
 
             // if (response.data.resetSlip) {
             //     setLoading2(false);
@@ -320,17 +343,9 @@ const Payment = () => {
             //                 reconnect();
             //             }
             //         }
-            //         setShowQRCode(false);
-            //         setIsConfirming(false);
 
-            //         router.navigate({
-            //             pathname: "/user/payments/success",
-            //             params: {
-            //                 bookingId
-            //             }
-            //         });
             //     } else {
-            //         handleErrorMessage(response.data.message || "ไม่สามารถยืนยันการชำระเงินได้ กรุณาลองใหม่อีกครั้ง");
+            //        
             //     }
             // }
 
@@ -348,17 +363,17 @@ const Payment = () => {
         switch (method) {
             case "PROMPTPAY":
                 return (
-                    <>
+                    <View style={tw`h-10 flex-row items-center`}>
                         <Image source={require("@/assets/images/icon-thaiqr.png")} style={[tw`w-7 h-8`, { objectFit: "cover" }]} />
                         <TextTheme size='sm'>QR Code พร้อมเพย์ (Prompt Pay)</TextTheme>
-                    </>
+                    </View>
                 );
             case "BANK_ACCOUNT_NUMBER":
                 return (
-                    <>
-                        <BankIcon width={23} height={23} fill={String(tw.color("blue-500"))} style={tw`mr-1`} />
+                    <View style={tw`h-10 flex-row items-center`}>
+                        <BankIcon width={23} height={23} fill={String(tw.color("blue-500"))} style={tw`mr-1 ml-1`} />
                         <TextTheme size='sm'>โอนผ่านเลขบัญชี ({BANK_RECEIVER.account.bank})</TextTheme>
-                    </>
+                    </View>
                 );
         }
     };
@@ -473,23 +488,25 @@ const Payment = () => {
 
                     <View style={tw`bg-white`}>
                         <RadioGroup initialValue={onSelectPaymentMethod || paymentMethod || undefined}>
-                            {paymentMethodOptions.map((item, index) => (
-                                <TouchableOpacity
-                                    key={`keyPaymentMethod-${index}`}
-                                    onPress={() => selectPaymentMethod(item)}
-                                    style={tw`border-b border-zinc-100 py-3 px-5 flex-row justify-between items-center`}
-                                >
-                                    <View style={tw`flex-1 flex-row items-center`}>
-                                        {renderPaymentMethod(item)}
-                                    </View>
-                                    <RadioButton
-                                        value={item}
-                                        color={String(tw.color("blue-500"))}
-                                        selected={item === "PROMPTPAY"}
-                                        onPress={() => selectPaymentMethod(item)}
-                                    />
-                                </TouchableOpacity>
-                            ))}
+                            {paymentMethodOptions.map((item, index) => {
+                                return (
+                                    <TouchableOpacity
+                                        key={`keyPaymentMethod-${index}`}
+                                        onPress={() => setOnSelectPaymentMethod(item)}
+                                        style={tw`border-b border-zinc-100 py-3 px-5 flex-row justify-between items-center`}
+                                    >
+                                        <View style={tw`flex-1 flex-row items-center`}>
+                                            {renderPaymentMethod(item)}
+                                        </View>
+                                        <RadioButton
+                                            value={item}
+                                            color={String(tw.color("blue-500"))}
+                                            selected={item === "PROMPTPAY"}
+                                            onPress={() => setOnSelectPaymentMethod(item)}
+                                        />
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </RadioGroup>
                     </View>
 
@@ -532,10 +549,13 @@ const Payment = () => {
                         <PaymentQRCode
                             bookingId={parseInt(bookingId as string)}
                             paymentMethod={paymentMethod as PaymentMethod}
-                            onClose={() => setShowQRCode(false)}
+                            onClose={() => {
+                                setShowQRCode(false); setError(null)
+                            }}
                             onConfirmPayment={handleConfirmPayment}
                             isConfirming={isConfirming}
-                            resetSlip={resetSlip}
+                            error={error}
+                            setError={setError}
                         />
                     )}
                 </View>

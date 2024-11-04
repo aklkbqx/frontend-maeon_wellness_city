@@ -78,7 +78,7 @@ const QRCodeGenerator = React.forwardRef<QRCodeGeneratorHandle, QRCodeGenerator_
                 ref={qrCodeContainerRef}
                 style={tw`items-center justify-center bg-white rounded-xl flex-col gap-2`}
             >
-                <Image source={require("@/assets/images/PromptPay-logo.png")} style={[tw`h-10`, { objectFit: "contain" }]} />
+                <Image source={require("@/assets/images/PromptPay-logo.png")} style={[tw`h-10 w-27`, { objectFit: "contain" }]} />
                 <QRCode
                     value={data}
                     size={size}

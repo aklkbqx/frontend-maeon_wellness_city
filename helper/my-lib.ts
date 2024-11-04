@@ -153,7 +153,7 @@ export const handleAxiosError = (error: unknown, handleErrorMessage: (message: s
             return errorMessage;
         } else if (axiosError.request) {
             console.error('Request error:', axiosError.request);
-            const errorMessage = "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง";
+            const errorMessage = "การเชื่อมต่อไม่เสถียร";
             handleErrorMessage(errorMessage);
             return errorMessage;
         } else {

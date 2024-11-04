@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, Image, FlatList, Modal, TextInput } from 'react-native';
+import { View, ScrollView, Image, FlatList, Modal, TextInput, ImageProps } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import TextTheme from '@/components/TextTheme';
 import tw from 'twrnc';
@@ -72,6 +72,58 @@ export interface ProgramType {
     programs: Program[];
 }
 
+
+interface OptimizedImageProps extends Omit<ImageProps, 'onError' | 'onLoad'> {
+    containerStyle?: object;
+}
+
+const OptimizedImage: React.FC<OptimizedImageProps> = ({
+    style,
+    containerStyle,
+    ...props
+}) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+
+    const handleLoad = () => {
+        setIsLoading(false);
+    };
+
+    const handleError = () => {
+        setIsLoading(false);
+        setHasError(true);
+    };
+
+    return (
+        <View style={[tw`relative`, containerStyle]}>
+            <Image
+                {...props}
+                style={[
+                    tw`w-full h-full`,
+                    style,
+                    hasError && tw`bg-gray-100`
+                ]}
+                onLoad={handleLoad}
+                onError={handleError}
+            />
+            {isLoading && (
+                <View style={tw`absolute inset-0 bg-gray-100 items-center justify-center`}>
+                    <Loading loading />
+                </View>
+            )}
+            {hasError && (
+                <View style={tw`absolute inset-0 bg-gray-100 items-center justify-center`}>
+                    <MaterialCommunityIcons
+                        name="image-off"
+                        size={24}
+                        color={tw.color('gray-400')}
+                    />
+                </View>
+            )}
+        </View>
+    );
+};
+
 const ProgramCard: React.FC<{ program: Program; onPress: () => void }> = ({ program, onPress }) => {
     if (!program.schedules?.[0]?.activities?.length) return null;
 
@@ -92,10 +144,10 @@ const ProgramCard: React.FC<{ program: Program; onPress: () => void }> = ({ prog
             >
                 {/* Image Section */}
                 <View style={tw`relative h-[200px]`}>
-                    <Image
+                    <OptimizedImage
                         source={{ uri: `${apiUrl}/images/program_images/${program.images?.[0]}` }}
                         style={tw`w-full h-full`}
-                        defaultSource={require("@/assets/images/placeholder.png")}
+                        containerStyle={tw`h-full`}
                     />
                     <LinearGradient
                         colors={['transparent', 'rgba(0,0,0,0.7)']}

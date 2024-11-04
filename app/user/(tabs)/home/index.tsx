@@ -203,7 +203,7 @@ const HomeScreen: React.FC = () => {
             }
         } catch (error) {
             handleAxiosError(error, (message) => {
-                handleErrorMessage(message, true);
+                handleErrorMessage(message);
             });
         } finally {
             setLoading(false);
@@ -266,7 +266,7 @@ const HomeScreen: React.FC = () => {
                         onPress={() => setIsCalendarVisible(true)}
                         style={tw`bg-blue-500 p-4 rounded-xl shadow-sm`}
                     >
-                        <View style={tw`flex-row items-center justify-between`}>
+                        <Animatable.View duration={2000} animation={"pulse"} iterationCount={'infinite'} style={tw`flex-row items-center justify-between`}>
                             <View style={tw`flex-row items-center gap-3`}>
                                 <MaterialCommunityIcons name="calendar-check" size={24} color="white" />
                                 <TextTheme font="Prompt-SemiBold" style={tw`text-white`}>
@@ -274,16 +274,16 @@ const HomeScreen: React.FC = () => {
                                 </TextTheme>
                             </View>
                             <MaterialCommunityIcons name="chevron-right" size={24} color="white" />
-                        </View>
+                        </Animatable.View>
                     </TouchableOpacity>
                 </View>
 
-                {!loading && (
+                {!loading ? (
                     <View style={tw`px-5`}>
                         <TextTheme font="Prompt-Bold" size="lg" style={tw`mb-2`}>หมวดหมู่</TextTheme>
                         <CategoryButton locationTypes={locationTypes} />
                     </View>
-                )}
+                ) : <Loading loading style={tw`mt-5`} />}
                 <View style={tw`flex-row flex-1 justify-between mx-5`}>
                     <TextTheme font="Prompt-Bold" size="lg" style={tw`mb-2`}>ข่าวสาร</TextTheme>
                     <TouchableOpacity style={tw`flex-row items-center gap-1`}>

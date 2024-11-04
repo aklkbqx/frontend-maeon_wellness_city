@@ -21,7 +21,8 @@ interface PaymentQRCodeProps {
     onClose: () => void;
     onConfirmPayment: (slipImage: string) => Promise<void>;
     isConfirming: boolean;
-    resetSlip: boolean
+    error: string | null;
+    setError: any
 }
 
 const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
@@ -30,7 +31,8 @@ const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
     onClose,
     onConfirmPayment,
     isConfirming,
-    resetSlip
+    error,
+    setError
 }) => {
     const [qrCodeData, setQrCodeData] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +72,9 @@ const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
         });
 
         if (!result.canceled) {
+            if (error) {
+                setError(null)
+            }
             setSlipImage(result.assets[0].uri);
         }
     };
@@ -174,7 +179,6 @@ const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
                             style={[tw`h-10`, { objectFit: "contain" }]} />
                     </View>
                 )}
-
                 {renderReceiverInfo()}
 
                 <View style={tw`mt-4`}>
@@ -182,6 +186,11 @@ const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
                         <View style={tw`flex-row justify-center`}>
                             <Image source={{ uri: slipImage }}
                                 style={[tw`w-30 h-30 rounded-sm mb-2 border border-zinc-200`, { objectFit: "cover" }]} />
+                        </View>
+                    )}
+                    {error && (
+                        <View style={tw`flex-row justify-center`}>
+                            <TextTheme color='red-500'>{error}</TextTheme>
                         </View>
                     )}
                     <View style={tw`flex-row gap-2 items-center`}>
@@ -210,6 +219,7 @@ const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
                     </View>
                 </View>
 
+
                 <TouchableOpacity onPress={onClose} style={tw`mt-4 absolute top-0 right-3`}>
                     <Ionicons name="close-circle" size={30} color={tw.color('red-500')} />
                 </TouchableOpacity>
@@ -220,14 +230,6 @@ const PaymentQRCode: React.FC<PaymentQRCodeProps> = ({
                 <View style={tw`absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center`}>
                     <Loading loading={true} size='large' color='white' />
                     <TextTheme style={tw`text-white mt-4`}>กำลังยืนยันการชำระเงิน...</TextTheme>
-                </View>
-            )}
-
-            {resetSlip && (
-                <View style={tw`absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center`}>
-                    <Loading loading={true} size='large' color='white' />
-                    <TextTheme style={tw`text-white mt-4`}>กำลังยืนยันการชำระเงิน</TextTheme>
-                    <TextTheme style={tw`text-white`}>อาจะใช้เวลา 1-2 นาที กรุณารอ...</TextTheme>
                 </View>
             )}
         </View>

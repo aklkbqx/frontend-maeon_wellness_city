@@ -75,7 +75,7 @@ const RootPayments = () => {
         ),
         headerTitleAlign: "center",
       }} />
-      <Stack.Screen name='success' options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name='public-receipt' options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name='receipt' options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   )

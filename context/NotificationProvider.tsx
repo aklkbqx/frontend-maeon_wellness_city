@@ -165,71 +165,84 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
 
         try {
-            const websocketURL = `${wsUrl}/api/ws/notification?token=${userToken}`;
+            if (wsUrl) {
+                const websocketURL = `${wsUrl}/api/ws/notification?token=${userToken}`;
 
-            socketRef.current = new WebSocket(websocketURL);
+                socketRef.current = new WebSocket(websocketURL);
 
-            socketRef.current.onopen = () => {
-                console.log('WebSocket Connected Successfully');
-                setWsConnected(true);
-                setError(null);
-            };
-
-            socketRef.current.onmessage = async (event) => {
-                try {
-                    const response = JSON.parse(event.data);
-                    if (response.success === false) {
-                        console.error('WebSocket error:', response.message);
-                        return;
+                socketRef.current.onopen = () => {
+                    console.log('WebSocket Connected Successfully');
+                    setWsConnected(true);
+                    setError(null);
+                    if (reconnectTimeoutRef.current) {
+                        clearTimeout(reconnectTimeoutRef.current)
                     }
-                    if (response === 'pong') {
-                        console.log('Received heartbeat response');
-                        return;
+                };
+
+                socketRef.current.onmessage = async (event) => {
+                    try {
+                        const response = JSON.parse(event.data);
+                        if (response.success === false) {
+                            console.error('WebSocket error:', response.message);
+                            return;
+                        }
+                        if (response === 'pong') {
+                            console.log('Received heartbeat response');
+                            return;
+                        }
+
+                        const data = response;
+                        if (!data.type || !data.title || !data.body || !data.receive) {
+                            console.error('Invalid notification format:', data);
+                            return;
+                        }
+
+                        const shouldNotify = (
+                            (Array.isArray(data.receive.userId) && data.receive.userId.includes(userData?.id)) ||
+                            data.receive.userId === userData?.id ||
+                            data.receive.all ||
+                            (Array.isArray(data.receive.role) && data.receive.role.includes(String(userData.role))) ||
+                            data.receive.role === userData?.role
+                        );
+
+
+                        if (shouldNotify && isEnabled) {
+                            await scheduleNotification(data);
+                        } else if (!isEnabled) {
+                            useShowToast("info", "คำแนะนำ", "มีการแจ้งเตือนใหม่เข้ามา กรุณาเปิดการแจ้งเตือน")
+                        }
+                    } catch (err) {
+                        console.error('Error processing message:', err);
                     }
+                };
 
-                    const data = response;
-                    if (!data.type || !data.title || !data.body || !data.receive) {
-                        console.error('Invalid notification format:', data);
-                        return;
-                    }
+                socketRef.current.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    setError('WebSocket connection error');
+                    setWsConnected(false);
+                };
 
-                    const shouldNotify = (
-                        (Array.isArray(data.receive.userId) && data.receive.userId.includes(userData?.id)) ||
-                        data.receive.userId === userData?.id ||
-                        data.receive.all ||
-                        (Array.isArray(data.receive.role) && data.receive.role.includes(String(userData.role))) ||
-                        data.receive.role === userData?.role
-                    );
+                socketRef.current.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    setWsConnected(false);
+                };
 
-
-                    if (shouldNotify && isEnabled) {
-                        await scheduleNotification(data);
-                    }
-                } catch (err) {
-                    console.error('Error processing message:', err);
-                }
-            };
-
-            socketRef.current.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                setError('WebSocket connection error');
-                setWsConnected(false);
-            };
-
-            socketRef.current.onclose = () => {
-                console.log('WebSocket disconnected');
-                setWsConnected(false);
-                // if (isLogin && userData && isEnabled) {
-                //     reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
-                // }
-            };
-
+            } else {
+                throw new Error("wsurl not found")
+            }
         } catch (err) {
             console.error('Error connecting to WebSocket:', err);
             setError('Failed to connect to notification service');
             setWsConnected(false);
         }
     }, [isInitialized, isLogin, isEnabled, userToken, userData]);
+
+    useEffect(() => {
+        if (isLogin && userData && isEnabled && !wsConnected) {
+            console.log('reconnecting....');
+            reconnectTimeoutRef.current = setTimeout(connectWebSocket, 1000);
+        }
+    }, [isEnabled, isLogin, userData, wsConnected])
 
     const toggleNotifications = async () => {
         if (isEnabled) {
@@ -331,6 +344,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setupNotificationHandler();
             const hasPermission = await requestNotificationPermissions();
             setPermissionStatus(hasPermission ? 'granted' : 'denied');
+            if (hasPermission) {
+                setIsEnabled(true);
+                await saveSettings(true);
+            }
             const token = await AsyncStorage.getItem(userTokenLogin);
             if (token) {
                 setUserToken(token);
@@ -359,7 +376,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     useEffect(() => {
         if (!isInitialized) return;
-        if (isLogin && isEnabled) {
+        if (isLogin && isEnabled && userData) {
             connectWebSocket();
         } else {
             disconnectWebSocket();

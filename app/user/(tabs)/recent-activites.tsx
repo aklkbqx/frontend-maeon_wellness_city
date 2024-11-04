@@ -208,7 +208,7 @@ const BookingStatusListItem: React.FC<{
   };
 
   const navigateToReceipt = () => {
-    router.navigate({ pathname: "/user/payments/success", params: { bookingId: booking.id } });
+    router.navigate({ pathname: "/user/payments/receipt", params: { bookingId: booking.id } });
   };
 
   const handleCancel = () => {

@@ -6,6 +6,7 @@ import tw from "twrnc";
 import { router } from "expo-router";
 import { formatEmail, formatPhoneNumber } from "@/helper/my-lib";
 import { Users } from "@/types/PrismaType";
+import { Image } from "react-native";
 
 interface ProfileType {
     profileImageUrl: string | null;
@@ -21,33 +22,22 @@ const ProfileSection: React.FC<ProfileType> = ({ profileImageUrl, userData, load
                 colors={[String(tw.color("slate-200")), String(tw.color("slate-200"))]}
                 style={tw`absolute top-0 left-0 right-0 h-32 rounded-t-3xl`}
             />
-            
+
             <View style={tw`p-5 pt-8`}>
                 <View style={tw`flex-row items-center gap-4 bg-white rounded-2xl p-4 shadow-md`}>
                     {/* Profile Image */}
                     <View style={tw`relative`}>
-                        <View style={tw`w-[90px] h-[90px] rounded-full bg-gray-100 shadow-lg overflow-hidden border-4 border-white`}>
-                            {(userData && profileImageUrl) ? (
-                                <Avatar
-                                    size={90}
-                                    source={{ uri: profileImageUrl }}
-                                />
-                            ) : (
-                                <Avatar
-                                    size={90}
-                                    source={require("@/assets/images/default-profile.jpg")}
-                                />
-                            )}
+                        <View style={tw`w-[90px] h-[90px] rounded-full bg-gray-100 shadow-lg overflow-hidden border-2 border-blue-100 flex-row justify-center items-center`}>
+                            <Image source={userData && profileImageUrl ? { uri: profileImageUrl } : require("@/assets/images/default-profile.jpg")} style={tw`w-[85px] h-[85px] rounded-full`} />
                         </View>
                         {userData && (
                             <View style={tw`absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-2 border-white`} />
                         )}
                     </View>
-
-                    {/* Profile Info */}
+                    
                     {userData ? (
-                        <TouchableOpacity 
-                            onPress={() => router.navigate("/pages/edit-account")} 
+                        <TouchableOpacity
+                            onPress={() => router.navigate("/pages/edit-account")}
                             style={tw`flex-1`}
                         >
                             <View style={tw`flex-col gap-1`}>
@@ -70,25 +60,25 @@ const ProfileSection: React.FC<ProfileType> = ({ profileImageUrl, userData, load
                         </TouchableOpacity>
                     ) : (
                         <View style={tw`flex-row items-center gap-3`}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => router.navigate({
                                     pathname: "/auth/register",
                                     params: { backToPage: "/user/my-account" }
                                 })}
                                 style={tw`bg-blue-500 px-4 py-2 rounded-full`}
                             >
-                                <TextTheme font="Prompt-SemiBold" size="lg" style={tw`text-white`}>
+                                <TextTheme font="Prompt-SemiBold" size="sm" style={tw`text-white`}>
                                     ลงทะเบียน
                                 </TextTheme>
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => router.navigate({
                                     pathname: "/auth/login",
                                     params: { backToPage: "/user/my-account" }
                                 })}
                                 style={tw`bg-white border border-blue-500 px-4 py-2 rounded-full`}
                             >
-                                <TextTheme font="Prompt-SemiBold" size="lg" style={tw`text-blue-500`}>
+                                <TextTheme font="Prompt-SemiBold" size="sm" style={tw`text-blue-500`}>
                                     เข้าสู่ระบบ
                                 </TextTheme>
                             </TouchableOpacity>

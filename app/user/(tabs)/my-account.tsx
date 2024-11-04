@@ -43,8 +43,11 @@ const MyAccount: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={tw`flex-1 justify-center items-center bg-gray-50`}>
-        <Loading loading={isLoading} />
+      <View style={tw`flex-col flex-1 justify-center items-center`}>
+        <View style={tw`bg-blue-500/10 rounded-xl p-3`}>
+          <Loading loading />
+          <TextTheme>กำลังโหลด...</TextTheme>
+        </View>
       </View>
     );
   }

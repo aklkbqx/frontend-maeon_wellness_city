@@ -97,7 +97,7 @@ const MenuSection: React.FC<MenuSectionProps> = ({ title, type, userData }) => {
                     ? toggleNotifications()
                     : handleItemPress(item.link, item.text)
             }
-            style={tw`flex-row justify-between items-center p-4 bg-white rounded-xl mb-2 shadow-sm`}
+            style={tw`flex-row justify-between items-center p-4 bg-white mb-2 shadow-sm`}
         >
             <View style={tw`flex-row items-center gap-3`}>
                 <View style={tw`w-10 h-10 rounded-full ${item.text === "ออกจากระบบ" ? "bg-red-100" : "bg-blue-100"} items-center justify-center`}>

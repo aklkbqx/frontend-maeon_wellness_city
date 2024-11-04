@@ -342,7 +342,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
           {/* Header Section */}
           <LinearGradient
             colors={[String(tw.color("blue-500")), String(tw.color("blue-600"))]}
-            style={tw`p-4`}
+            style={tw`p-3`}
           >
             <View style={tw`flex-row justify-between items-center`}>
               <View style={tw`flex-row items-center gap-2`}>
