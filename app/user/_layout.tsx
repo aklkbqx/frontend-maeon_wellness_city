@@ -7,19 +7,13 @@ import Loading from '@/components/Loading'
 import { View } from 'react-native'
 import tw from "twrnc"
 import TextTheme from '@/components/TextTheme'
+import LoadingScreen from '@/components/LoadingScreen'
 
 const UserLayout = () => {
     const { isLoading } = useRedirectByRole(['user']);
 
-    if (isLoading ) {
-        return (
-            <View style={tw`flex-col flex-1 justify-center items-center`}>
-                <View style={tw`bg-blue-500/10 rounded-xl p-3`}>
-                    <Loading loading />
-                    <TextTheme>กำลังโหลด...</TextTheme>
-                </View>
-            </View>
-        );
+    if (isLoading) {
+        return <LoadingScreen />
     }
     return (
         <Stack>

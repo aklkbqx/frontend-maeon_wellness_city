@@ -76,7 +76,7 @@ const RecentBookings: React.FC<RecentBookingsProps> = ({ bookings }) => (
                 <View style={tw`flex-row items-center`}>
                     <TextTheme style={tw`mr-2`}>฿{booking.total_price}</TextTheme>
                     <View style={tw`px-2 py-1 rounded ${booking.status === 'PENDING' ? 'bg-yellow-100' :
-                            booking.status === 'CONFIRMED' ? 'bg-green-100' : 'bg-red-100'
+                        booking.status === 'CONFIRMED' ? 'bg-green-100' : 'bg-red-100'
                         }`}>
                         <TextTheme size="xs">{booking.status}</TextTheme>
                     </View>
@@ -93,8 +93,7 @@ const Dashboard: React.FC = () => {
         revenue: { total: 0, thisMonth: 0, lastMonth: 0 },
         locations: { total: 0, byType: {} }
     });
-    const [loading, setLoading] = useState(true);
-
+    const [loading, setLoading] = useState<boolean>(true);
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {

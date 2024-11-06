@@ -10,7 +10,7 @@ import React, { useCallback, useEffect } from 'react';
 import { formatEmail } from '@/helper/my-lib';
 import UserRoleBadge from '@/components/UserRoleBadge';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ProtectedRoute } from '@/context/RoleProvider';
+import NotificationProvider from '@/context/NotificationProvider';
 
 const SkeletonLoader: React.FC<{ width: number; height: number; borderRadius: number }> = ({ width, height, borderRadius }) => {
     return (
@@ -131,7 +131,7 @@ function AdminLayout() {
             <Tabs.Screen
                 name="users"
                 options={{
-                    title: 'สมาชิก',
+                    title: 'จัดการสมาชิก',
                     tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'people' : 'people-outline'} color={color} />,
                 }}
             />
@@ -140,6 +140,8 @@ function AdminLayout() {
                 options={{
                     title: 'สถานที่',
                     tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'map' : 'map-outline'} color={color} />,
+                    headerTitleAlign: "left",
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -185,7 +187,9 @@ function AdminLayout() {
 const RootAdmin = () => {
     return (
         <FetchMeProvider>
-            <AdminLayout />
+            <NotificationProvider>
+                <AdminLayout />
+            </NotificationProvider>
         </FetchMeProvider>
     )
 }

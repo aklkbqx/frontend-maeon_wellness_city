@@ -372,8 +372,11 @@ const MainTourProgram: React.FC = () => {
                                     defaultSource={require("@/assets/images/placeholder.png")}
                                 />
                             ) : (
-                                <View style={tw`flex-1 justify-center items-center`}>
-                                    <Loading loading />
+                                <View style={tw`flex-col flex-1 justify-center items-center`}>
+                                    <View style={tw`bg-blue-500/10 rounded-xl p-3`}>
+                                        <Loading loading />
+                                        <TextTheme>กำลังโหลด...</TextTheme>
+                                    </View>
                                 </View>
                             )}
                         </View>

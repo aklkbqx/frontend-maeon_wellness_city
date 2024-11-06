@@ -9,6 +9,7 @@ import Loading from '@/components/Loading';
 import TextTheme from '@/components/TextTheme';
 import * as Application from 'expo-application';
 import { useFetchMeContext } from '@/context/FetchMeContext';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const MyAccount: React.FC = () => {
     useStatusBar("dark-content");
@@ -42,11 +43,7 @@ const MyAccount: React.FC = () => {
     };
 
     if (isLoading) {
-        return (
-            <View style={tw`flex-1 justify-center items-center bg-gray-50`}>
-                <Loading loading={isLoading} />
-            </View>
-        );
+        return <LoadingScreen />
     }
 
     return (

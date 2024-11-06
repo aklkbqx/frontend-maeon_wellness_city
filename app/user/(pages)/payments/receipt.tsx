@@ -17,6 +17,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import useShowToast from '@/hooks/useShowToast';
 import * as FileSystem from 'expo-file-system';
+import LoadingScreen from '@/components/LoadingScreen';
 
 // TODO ทำ Deep Link
 
@@ -331,11 +332,7 @@ const PaymentSuccessScreen: React.FC = () => {
   }, [booking, payment, userData]);
 
   if (loading) {
-    return (
-      <View style={tw`flex-1 justify-center items-center bg-white`}>
-        <Loading loading={loading} />
-      </View>
-    );
+    return <LoadingScreen />
   }
 
   return (

@@ -19,6 +19,7 @@ import { Users } from '@/types/PrismaType';
 import { FormDataInput } from '@/types/types';
 import { useFetchMeContext } from '@/context/FetchMeContext';
 import Loading from '@/components/Loading';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface PreparedImage {
     uri: string;
@@ -206,14 +207,7 @@ const AccountSetting: React.FC = () => {
     };
 
     if (!userData) {
-        return (
-            <View style={tw`flex-col flex-1 justify-center items-center`}>
-                <View style={tw`bg-blue-500/10 rounded-xl p-3`}>
-                    <Loading loading />
-                    <TextTheme>กำลังโหลด...</TextTheme>
-                </View>
-            </View>
-        )
+        return <LoadingScreen />
     }
 
     return (

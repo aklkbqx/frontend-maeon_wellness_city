@@ -11,6 +11,7 @@ import LogoutModal from '@/components/LogoutModal';
 import { Ionicons } from '@expo/vector-icons';
 import Loading from '@/components/Loading';
 import { useFetchMeContext } from '@/context/FetchMeContext';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const MyAccount: React.FC = () => {
   useStatusBar("dark-content");
@@ -24,11 +25,7 @@ const MyAccount: React.FC = () => {
   }, [initializeUserData]);
 
   if (isLoading) {
-    return (
-      <View style={tw`flex-1 justify-center items-center bg-gray-50`}>
-        <Loading loading={isLoading} color={String(tw.color("rose-500"))} />
-      </View>
-    );
+    return <LoadingScreen />
   }
 
   return (

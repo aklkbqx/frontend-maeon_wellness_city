@@ -1,520 +1,463 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, FlatList, TouchableOpacity, RefreshControl, ScrollView, ActivityIndicator } from 'react-native';
-import { Stack, Tabs, useRouter } from 'expo-router';
+import { ScrollView, RefreshControl, TextInput, TextInputProps } from 'react-native';
+import { View, Colors, Drawer, TouchableOpacity, Badge, TabController, Dialog } from 'react-native-ui-lib';
 import { Ionicons } from '@expo/vector-icons';
-import tw from 'twrnc';
+import tw from "twrnc";
 import TextTheme from '@/components/TextTheme';
-import { NotificationsType, NotificationsStatus, PaymentsStatus, Notifications } from '@/types/PrismaType';
+import { useStatusBar } from '@/hooks/useStatusBar';
+import { useFetchMeContext } from '@/context/FetchMeContext';
+import { router, Tabs, useFocusEffect } from 'expo-router';
+import api from '@/helper/api';
 import { handleAxiosError, handleErrorMessage } from '@/helper/my-lib';
-import useShowToast from '@/hooks/useShowToast';
-import { formatDistanceToNow } from 'date-fns';
-import { th } from 'date-fns/locale';
-import { useAdminNotifications } from '@/hooks/useAdminNotifications';
+import {
+    notifications,
+    notifications_type,
+    notifications_status,
+    NotificationResponse,
+    NotificationActionResponse
+} from '@/types/notifications';
+import {
+    getNotificationTypeLabel,
+    getNotificationColor,
+    formatNotificationTimestamp,
+    getNotificationIcon
+} from '@/helper/utiles';
+import Loading from '@/components/Loading';
+import { isNull } from 'lodash';
+import * as Animatable from 'react-native-animatable';
+import NotificationForm from '@/components/admin/notifications/NotificationForm';
 
-// Types
-interface NotificationData {
-    bookingId?: number;
-    paymentId?: number;
-    userId?: number;
-    status?: PaymentsStatus;
-    amount?: number;
-    redirectUrl?: string;
-}
-
-interface NotificationItemProps {
-    notification: Notifications;
-    onPress: () => void;
-    onAction?: (action: string) => Promise<void>;
-}
-
-interface FilterTabProps {
-    label: string;
-    isActive: boolean;
-    count: number;
-    icon: keyof typeof Ionicons.glyphMap;
-    badgeColor?: string;
-    onPress: () => void;
-}
-
-type TabType = 'all' | 'unread' | 'payment' | 'order' | 'status' | 'system';
-
-interface FilterTabsData {
-    id: TabType;
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-}
-
-// Utility functions
-const getNotificationTypeStyles = (type: NotificationsType) => {
-    switch (type) {
-        case 'PAYMENT':
-            return {
-                bgColor: 'bg-green-100',
-                icon: 'cash-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('green-500'))
-            };
-        case 'ORDER':
-            return {
-                bgColor: 'bg-blue-100',
-                icon: 'cart-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('blue-500'))
-            };
-        case 'STATUS_UPDATE':
-            return {
-                bgColor: 'bg-orange-100',
-                icon: 'refresh-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('orange-500'))
-            };
-        case 'SYSTEM':
-            return {
-                bgColor: 'bg-gray-100',
-                icon: 'settings-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('gray-500'))
-            };
-        case 'CHAT':
-            return {
-                bgColor: 'bg-purple-100',
-                icon: 'chatbubble-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('purple-500'))
-            };
-        case 'PROMOTION':
-            return {
-                bgColor: 'bg-yellow-100',
-                icon: 'pricetag-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('yellow-500'))
-            };
-        case 'ANNOUNCEMENT':
-            return {
-                bgColor: 'bg-red-100',
-                icon: 'megaphone-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('red-500'))
-            };
-        case 'REMINDER':
-            return {
-                bgColor: 'bg-indigo-100',
-                icon: 'alarm-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('indigo-500'))
-            };
-        default:
-            return {
-                bgColor: 'bg-gray-100',
-                icon: 'notifications-outline' as keyof typeof Ionicons.glyphMap,
-                iconColor: String(tw.color('gray-500'))
-            };
+const tabItems = [
+    {
+        label: 'ที่ยังไม่ได้อ่าน',
+        key: 'UNREAD',
+        icon: 'notifications'
+    },
+    {
+        label: 'อ่านแล้ว',
+        key: 'READ',
+        icon: 'checkmark-circle'
     }
-};
+];
 
-const FilterTab: React.FC<FilterTabProps> = ({
-    label,
-    isActive,
-    count,
-    icon,
-    badgeColor = 'indigo',
-    onPress
-}) => (
-    <TouchableOpacity
-        style={tw`
-            px-4 py-2 rounded-xl
-            ${isActive ? `bg-${badgeColor}-100` : 'bg-white'}
-            border border-gray-200
-        `}
-        onPress={onPress}
-    >
-        <View style={tw`flex-row items-center gap-2`}>
-            <Ionicons
-                name={icon}
-                size={20}
-                color={isActive ? tw.color(`${badgeColor}-600`) : tw.color('gray-500')}
-            />
-            <TextTheme
-                style={tw`${isActive ? `text-${badgeColor}-600` : 'text-gray-600'}`}
-            >
-                {label}
-            </TextTheme>
-            <View style={tw`
-                px-2 py-0.5 rounded-full
-                ${isActive ? `bg-${badgeColor}-500` : 'bg-gray-200'}
-            `}>
-                <TextTheme
-                    size="xs"
-                    style={tw`${isActive ? 'text-white' : 'text-gray-600'}`}
-                >
-                    {count}
-                </TextTheme>
-            </View>
-        </View>
-    </TouchableOpacity>
-);
-
-const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPress, onAction }) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const notificationData: NotificationData = notification.data ? JSON.parse(notification.data) : {};
-    const styles = getNotificationTypeStyles(notification.type);
-
-    const handleAction = async (action: string) => {
-        if (onAction) {
-            try {
-                setIsLoading(true);
-                await onAction(action);
-            } finally {
-                setIsLoading(false);
-            }
+const NotificationItem: React.FC<{
+    item: notifications;
+    onRead: (id: number) => void;
+    onDelete: (id: number) => void;
+}> = ({ item, onRead, onDelete }) => {
+    const data = JSON.parse(String(item.data));
+    const pressNotification = () => {
+        if (!isNull(data)) {
+            router.navigate(data.link);
+            onRead(item.id)
         }
-    };
-
-    const renderActionButtons = () => {
-        if (isLoading) {
-            return (
-                <View style={tw`mt-2`}>
-                    <ActivityIndicator color={tw.color('indigo-600')} />
-                </View>
-            );
-        }
-
-        switch (notification.type) {
-            case 'PAYMENT':
-                if (notificationData.status === 'PENDING_VERIFICATION') {
-                    return (
-                        <View style={tw`flex-row gap-2 mt-2`}>
-                            <TouchableOpacity
-                                style={tw`bg-green-500 px-3 py-2 rounded-lg flex-row items-center`}
-                                onPress={() => handleAction('approve')}
-                                disabled={isLoading}
-                            >
-                                <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-                                <TextTheme style={tw`text-white ml-1`}>ยืนยันการชำระเงิน</TextTheme>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={tw`bg-red-500 px-3 py-2 rounded-lg flex-row items-center`}
-                                onPress={() => handleAction('reject')}
-                                disabled={isLoading}
-                            >
-                                <Ionicons name="close-circle-outline" size={20} color="white" />
-                                <TextTheme style={tw`text-white ml-1`}>ปฏิเสธ</TextTheme>
-                            </TouchableOpacity>
-                        </View>
-                    );
-                }
-                return null;
-
-            case 'ORDER':
-                return (
-                    <View style={tw`flex-row gap-2 mt-2`}>
-                        <TouchableOpacity
-                            style={tw`bg-indigo-500 px-3 py-2 rounded-lg flex-row items-center`}
-                            onPress={() => handleAction('confirm_booking')}
-                            disabled={isLoading}
-                        >
-                            <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-                            <TextTheme style={tw`text-white ml-1`}>ยืนยันการจอง</TextTheme>
-                        </TouchableOpacity>
-                    </View>
-                );
-
-            default:
-                return null;
-        }
-    };
-
+    }
     return (
-        <TouchableOpacity
-            style={tw`bg-white p-4 rounded-xl shadow-sm border border-gray-100`}
-            onPress={onPress}
-        >
-            <View style={tw`flex-row justify-between items-start`}>
-                <View style={tw`flex-row items-center gap-3`}>
-                    <View style={tw`
-                        w-10 h-10 rounded-full 
-                        ${styles.bgColor}
-                        justify-center items-center
-                    `}>
-                        <Ionicons
-                            name={styles.icon}
-                            size={24}
-                            color={styles.iconColor}
-                        />
-                    </View>
-                    <View style={tw`flex-1`}>
-                        <TextTheme font="Prompt-Medium" size="base">
-                            {notification.title}
-                        </TextTheme>
-                        <TextTheme size="sm" style={tw`text-gray-500 mt-1`}>
-                            {notification.body}
-                        </TextTheme>
-                        <TextTheme size="xs" style={tw`text-gray-400 mt-1`}>
-                            {formatDistanceToNow(new Date(notification.created_at), {
-                                addSuffix: true,
-                                locale: th
-                            })}
-                        </TextTheme>
-                    </View>
-                </View>
-                <View style={tw`
-                    w-3 h-3 rounded-full
-                    ${notification.status === 'UNREAD' ? 'bg-red-500' :
-                        notification.status === 'READ' ? 'bg-gray-300' : 'bg-green-500'}
-                `} />
-            </View>
-            {renderActionButtons()}
-        </TouchableOpacity>
+        <>
+            <View style={tw`pt-2 px-2`}>
+                <Drawer
+                    rightItems={[{
+                        text: 'ลบ',
+                        background: String(tw.color("red-500")),
+                        onPress: () => onDelete(item.id),
+                    }]}
+                    leftItem={item.status === notifications_status.UNREAD ? {
+                        text: 'อ่านแล้ว',
+                        background: String(tw.color(getNotificationColor(item.type).replace('bg-', ''))),
+                        onPress: () => onRead(item.id)
+                    } : undefined}
+                    style={tw`rounded-2xl border border-zinc-200 shadow bg-white relative`}
+                >
+                    <TouchableOpacity
+                        style={[
+                            tw`p-4 bg-white`,
+                            item.status === notifications_status.READ && tw`bg-zinc-100`
+                        ]}
+                        onPress={pressNotification}
+                        disabled={!data}
+                    >
+                        <View style={tw`flex-row gap-2 items-center`}>
+                            <View style={tw`${getNotificationColor(item.type)} p-2 rounded-full`}>
+                                <Ionicons
+                                    name={getNotificationIcon(item.type)}
+                                    size={24}
+                                    color="white"
+                                />
+                            </View>
+                            <View style={tw`flex-1`}>
+                                <View style={tw`flex-row items-center justify-between`}>
+                                    <Badge
+                                        labelStyle={{ fontFamily: "Prompt-Regular" }}
+                                        label={getNotificationTypeLabel(item.type)}
+                                        size={16}
+                                        backgroundColor={String(tw.color(getNotificationColor(item.type).replace('bg-', '')))}
+                                    />
+                                    {item.status === notifications_status.READ && (
+                                        <Badge label='อ่านแล้ว' size={16} backgroundColor={Colors.green30} labelStyle={{ fontFamily: "Prompt-Regular" }} />
+                                    )}
+                                </View>
+                                <TextTheme font='Prompt-Medium'>{item.title}</TextTheme>
+                                <TextTheme font='Prompt-Light' size='sm' numberOfLines={2}>{item.body}</TextTheme>
+                                <TextTheme font='Prompt-Light' size='xs' style={tw`text-gray-500 mt-1`}>
+                                    {formatNotificationTimestamp(item.created_at)}
+                                </TextTheme>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </Drawer>
+            </View >
+        </>
     );
 };
 
+const NotificationSkeletonLoader = () => (
+    <View style={tw`pt-2 px-2 mb-1`}>
+        <Animatable.View
+            animation="pulse"
+            iterationCount="infinite"
+            style={tw`p-4 border border-zinc-200 bg-white rounded-2xl shadow`}
+        >
+            <View style={tw`flex-row gap-4 items-center`}>
+                <View style={tw`w-15 h-15 bg-slate-200 rounded-full`} />
+                <View style={tw`flex-1`}>
+                    <View style={tw`flex-row justify-between mb-4`}>
+                        <View style={tw`w-15 h-5 bg-slate-200 rounded-xl`} />
+                        <View style={tw`w-15 h-5 bg-slate-200 rounded-xl`} />
+                    </View>
+                    <View style={tw`flex-col gap-2`}>
+                        <View style={tw`h-4 bg-slate-200 rounded w-50`} />
+                        <View style={tw`h-4 bg-slate-200 rounded w-30`} />
+                        <View style={tw`h-4 bg-slate-200 rounded w-20`} />
+                    </View>
+                </View>
+            </View>
+        </Animatable.View>
+    </View>
+);
 
-export default function NotificationsScreen() {
-    const router = useRouter();
-    const [activeTab, setActiveTab] = useState<TabType>('all');
-    const {
-        notifications,
-        isLoading,
-        fetchNotifications,
-        verifyPayment,
-        confirmBooking,
-        markAsRead
-    } = useAdminNotifications();
 
-    const filterTabs: FilterTabsData[] = [
-        {
-            id: 'all',
-            label: 'ทั้งหมด',
-            icon: 'notifications-outline' as keyof typeof Ionicons.glyphMap
-        },
-        {
-            id: 'unread',
-            label: 'ยังไม่อ่าน',
-            icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap
-        },
-        {
-            id: 'payment',
-            label: 'การชำระเงิน',
-            icon: 'cash-outline' as keyof typeof Ionicons.glyphMap
-        },
-        {
-            id: 'order',
-            label: 'คำสั่งซื้อ',
-            icon: 'cart-outline' as keyof typeof Ionicons.glyphMap
-        },
-        {
-            id: 'status',
-            label: 'อัพเดทสถานะ',
-            icon: 'refresh-outline' as keyof typeof Ionicons.glyphMap
-        },
-        {
-            id: 'system',
-            label: 'ระบบ',
-            icon: 'settings-outline' as keyof typeof Ionicons.glyphMap
-        }
+const NoNotifications = () => (
+    <View style={tw`flex-1 justify-center mt-20 items-center`}>
+        <View style={tw`bg-slate-200 rounded-full p-4 mb-4`}>
+            <Ionicons name="notifications-off-outline" size={50} style={tw`text-blue-500`} />
+        </View>
+        <View style={tw`items-center gap-1`}>
+            <TextTheme font='Prompt-Medium' size='lg' style={tw`text-slate-600`}>
+                ยังไม่มีการแจ้งเตือน
+            </TextTheme>
+            <TextTheme size='sm' style={tw`text-slate-500 text-center px-6`}>
+                การแจ้งเตือนจะแสดงที่นี่
+            </TextTheme>
+        </View>
+    </View>
+);
+
+const renderNotifications = (
+    notifications: notifications[],
+    readStatus: 'READ' | 'UNREAD',
+    onRead: (id: number) => void,
+    onDelete: (id: number) => void
+) => {
+    if (!notifications || notifications.length === 0) {
+        return <NoNotifications />;
+    }
+
+    // กรองการแจ้งเตือนตามสถานะการอ่าน
+    const filteredNotifications = notifications.filter(item => item.status === readStatus);
+
+    if (filteredNotifications.length === 0) {
+        return (
+            <View style={tw`flex-1 justify-center items-center mt-20`}>
+                <View style={tw`bg-slate-200 rounded-full p-4 mb-4`}>
+                    <Ionicons
+                        name={readStatus === 'UNREAD' ? "notifications" : "checkmark-circle"}
+                        size={50}
+                        style={tw`text-blue-500`}
+                    />
+                </View>
+                <TextTheme font='Prompt-Medium' size='lg' style={tw`text-slate-600`}>
+                    {readStatus === 'UNREAD'
+                        ? 'ไม่มีการแจ้งเตือนที่ยังไม่ได้อ่าน'
+                        : 'ไม่มีการแจ้งเตือนที่อ่านแล้ว'
+                    }
+                </TextTheme>
+            </View>
+        );
+    }
+
+    const typeOrder = [
+        notifications_type.SYSTEM,
+        notifications_type.PAYMENT,
+        notifications_type.STATUS_UPDATE,
+        notifications_type.ANNOUNCEMENT,
+        notifications_type.CHAT,
+        notifications_type.ORDER,
+        notifications_type.PROMOTION,
+        notifications_type.REMINDER
     ];
 
-    const getFilteredNotifications = () => {
-        switch (activeTab) {
-            case 'unread':
-                return notifications.filter(n => n.status === 'UNREAD');
-            case 'payment':
-                return notifications.filter(n => n.type === 'PAYMENT');
-            case 'order':
-                return notifications.filter(n => n.type === 'ORDER');
-            case 'status':
-                return notifications.filter(n => n.type === 'STATUS_UPDATE');
-            case 'system':
-                return notifications.filter(n => n.type === 'SYSTEM');
-            case 'all':
-            default:
-                return notifications;
-        }
-    };
+    // หาการแจ้งเตือนล่าสุดของแต่ละประเภท
+    const getLatestTimestamp = (notifications: notifications[], type: notifications_type) => {
+        const typeNotifications = notifications.filter(n => n.type === type);
+        if (typeNotifications.length === 0) return 0;
 
-    const handleMarkAllAsRead = async () => {
-        const unreadNotifications = notifications.filter(n => n.status === 'UNREAD');
-        for (const notification of unreadNotifications) {
-            await markAsRead(notification.id);
-        }
-        await fetchNotifications();
-    };
-
-    const computeTabCounts = () => {
-        return filterTabs.map(tab => ({
-            ...tab,
-            count: getNotificationCount(tab.id as TabType),
-            badgeColor: getNotificationBadgeColor(tab.id as TabType)
+        return Math.max(...typeNotifications.map(n => {
+            if (readStatus === 'UNREAD') {
+                return new Date(n.created_at).getTime();
+            }
+            return n.updated_at ?
+                new Date(n.updated_at).getTime() :
+                new Date(n.created_at).getTime();
         }));
     };
 
-    const getNotificationCount = (type: TabType): number => {
-        switch (type) {
-            case 'all':
-                return notifications.length;
-            case 'unread':
-                return notifications.filter(n => n.status === 'UNREAD').length;
-            case 'payment':
-                return notifications.filter(n => n.type === 'PAYMENT').length;
-            case 'order':
-                return notifications.filter(n => n.type === 'ORDER').length;
-            case 'status':
-                return notifications.filter(n => n.type === 'STATUS_UPDATE').length;
-            case 'system':
-                return notifications.filter(n => n.type === 'SYSTEM').length;
-            default:
-                return 0;
-        }
-    };
+    // เรียงประเภทตามเวลาล่าสุดของแต่ละประเภท
+    const sortedTypes = [...typeOrder].sort((a, b) => {
+        const latestA = getLatestTimestamp(filteredNotifications, a);
+        const latestB = getLatestTimestamp(filteredNotifications, b);
+        return latestB - latestA;
+    }).filter(type =>
+        filteredNotifications.some(notification => notification.type === type)
+    );
 
-    const getNotificationBadgeColor = (type: TabType): string => {
-        switch (type) {
-            case 'unread':
-                return 'red';
-            case 'payment':
-                return 'green';
-            case 'order':
-                return 'blue';
-            case 'status':
-                return 'orange';
-            case 'system':
-                return 'gray';
-            default:
-                return 'indigo';
-        }
+    // เรียงการแจ้งเตือนในแต่ละประเภทตามเวลา
+    const sortNotifications = (notifications: notifications[]) => {
+        return [...notifications].sort((a, b) => {
+            if (readStatus === 'UNREAD') {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            }
+            const timeA = a.updated_at ? new Date(a.updated_at).getTime() : new Date(a.created_at).getTime();
+            const timeB = b.updated_at ? new Date(b.updated_at).getTime() : new Date(b.created_at).getTime();
+            return timeB - timeA;
+        });
     };
 
     return (
-        <View style={tw`flex-1 bg-gray-50`}>
-            <Tabs.Screen
-                options={{
-                    title: 'แจ้งเตือน',
-                    tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'notifications' : 'notifications-outline'} color={color} />,
-                }}
-            />
-            <View>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={tw``}
-                    contentContainerStyle={tw`p-2 flex-row`}
-                >
-                    {computeTabCounts().map((tab) => (
-                        <View key={tab.id} style={tw`mr-2`}>
-                            <FilterTab
-                                label={tab.label}
-                                icon={tab.icon}
-                                isActive={activeTab === tab.id}
-                                count={tab.count}
-                                badgeColor={tab.badgeColor}
-                                onPress={() => setActiveTab(tab.id as TabType)}
+        <>
+            {sortedTypes.map(currentType => {
+                const notificationsForType = filteredNotifications.filter(
+                    notification => notification.type === currentType
+                );
+
+                if (notificationsForType.length === 0) return null;
+
+                // เรียงการแจ้งเตือนในแต่ละประเภทตามเวลา
+                const sortedNotifications = sortNotifications(notificationsForType);
+
+                return (
+                    <View key={currentType}>
+                        <TextTheme font='Prompt-Medium' size='lg' style={tw`mt-2 px-2`}>
+                            {getNotificationTypeLabel(currentType)}
+                        </TextTheme>
+                        {sortedNotifications.map((notification, index) => (
+                            <NotificationItem
+                                key={`keyNotificationItem-${index}`}
+                                item={notification}
+                                onRead={onRead}
+                                onDelete={onDelete}
                             />
-                        </View>
-                    ))}
-                </ScrollView>
-            </View>
-
-            <View style={tw`px-4 py-3 bg-white border-b border-gray-200`}>
-                <View style={tw`flex-row justify-between items-center`}>
-                    <View style={tw`flex-row items-center gap-2`}>
-                        <View style={tw`w-2 h-2 rounded-full bg-red-500`} />
-                        <TextTheme style={tw`text-gray-600`}>
-                            รอดำเนินการ
-                        </TextTheme>
-                        <View style={tw`
-                            px-2 py-0.5 rounded-full bg-red-50
-                            border border-red-100
-                        `}>
-                            <TextTheme style={tw`text-red-600`}>
-                                {notifications.filter(n => n.status === 'UNREAD').length}
-                            </TextTheme>
-                        </View>
+                        ))}
                     </View>
-                    <TouchableOpacity
-                        style={tw`flex-row items-center gap-1`}
-                        onPress={handleMarkAllAsRead}
-                    >
-                        <Ionicons
-                            name="checkmark-done-outline"
-                            size={20}
-                            color={String(tw.color('indigo-600'))}
-                        />
-                        <TextTheme style={tw`text-indigo-600`}>
-                            อ่านทั้งหมด
-                        </TextTheme>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* Notifications List */}
-            <FlatList
-                data={getFilteredNotifications()}
-                renderItem={({ item }) => (
-                    <NotificationItem
-                        notification={item}
-                        onPress={async () => {
-                            if (item.status === 'UNREAD') {
-                                await markAsRead(item.id);
-                            }
-                            const data: NotificationData = item.data ? JSON.parse(item.data) : {};
-                            switch (item.type) {
-                                case 'PAYMENT':
-                                    if (data.paymentId) {
-                                        router.push(`/admin/payments/${data.paymentId}`);
-                                    }
-                                    break;
-                                case 'ORDER':
-                                    if (data.bookingId) {
-                                        router.push(`/admin/bookings/${data.bookingId}`);
-                                    }
-                                    break;
-                                case 'STATUS_UPDATE':
-                                    if (data.redirectUrl) {
-                                        router.push(data.redirectUrl);
-                                    }
-                                    break;
-                            }
-                        }}
-                        onAction={async (action) => {
-                            switch (action) {
-                                case 'approve':
-                                    await verifyPayment(item.id, PaymentsStatus.PAID);
-                                    break;
-                                case 'reject':
-                                    await verifyPayment(item.id, PaymentsStatus.REJECTED);
-                                    break;
-                                case 'confirm_booking':
-                                    await confirmBooking(item.id);
-                                    break;
-                            }
-                        }}
-                    />
-                )}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={tw`p-4`}
-                ItemSeparatorComponent={() => <View style={tw`h-2`} />}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={isLoading}
-                        onRefresh={fetchNotifications}
-                        colors={[String(tw.color('indigo-600'))]}
-                        tintColor={String(tw.color('indigo-600'))}
-                    />
-                }
-                ListEmptyComponent={() => (
-                    <View style={tw`flex-1 items-center justify-center py-8`}>
-                        {isLoading ? (
-                            <ActivityIndicator color={String(tw.color('indigo-600'))} />
-                        ) : (
-                            <>
-                                <Ionicons
-                                    name="notifications-off-outline"
-                                    size={48}
-                                    color={tw.color('gray-400')}
-                                />
-                                <TextTheme style={tw`text-gray-500 mt-2`}>
-                                    {activeTab === 'unread'
-                                        ? 'ไม่มีการแจ้งเตือนที่ยังไม่ได้อ่าน'
-                                        : 'ไม่มีการแจ้งเตือน'}
-                                </TextTheme>
-                            </>
-                        )}
-                    </View>
-                )}
-            />
-        </View>
+                );
+            })}
+            <View style={tw`pb-30`} />
+        </>
     );
-}
+};
+
+const Notifications: React.FC = () => {
+    useStatusBar("dark-content");
+    const { isLogin } = useFetchMeContext();
+    const [notifications, setNotifications] = useState<notifications[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [selectedTab, setSelectedTab] = useState(0);
+    const [isShowChat, setIsShowChat] = useState<boolean>(false);
+    const [modalAddNotify, setModalAddNotify] = useState<boolean>(false);
+    const [showNotificationForm, setShowNotificationForm] = useState<boolean>(false);
+
+    const fetchNotifications = useCallback(async () => {
+        if (!isLogin) return;
+
+        setIsLoading(true);
+        try {
+            const response = await api.get<NotificationResponse>('/api/notifications');
+            if (response.data.success) {
+                setNotifications(response.data.notifications);
+            }
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message)
+            })
+        } finally {
+            setIsLoading(false);
+        }
+    }, [isLogin]);
+
+    useFocusEffect(useCallback(() => {
+        if (isLogin) {
+            fetchNotifications();
+        }
+    }, [isLogin]))
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await fetchNotifications();
+        setRefreshing(false);
+    };
+
+    const handleMarkAsRead = async (id: number) => {
+        try {
+            const response = await api.put<NotificationActionResponse>(`/api/notifications/${id}/read`);
+            if (response.data.success) {
+                setNotifications(prev =>
+                    prev.map(item =>
+                        item.id === id ? { ...item, status: notifications_status.READ } : item
+                    )
+                );
+            }
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message)
+            })
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        try {
+            const response = await api.delete(`/api/notifications/${id}`);
+            if (response.data.success) {
+                setNotifications(prev => prev.filter(item => item.id !== id));
+            }
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message)
+            })
+        }
+    };
+
+    const addNotification = () => {
+        try {
+
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message)
+            })
+        }
+    }
+
+    if (isLoading) {
+        return (
+            <View style={tw`flex-1 bg-gray-50`}>
+                <Loading loading={isLoading} style={tw`my-5`} />
+                {[...Array(4)].map((_, i) => (
+                    <NotificationSkeletonLoader key={i} />
+                ))}
+            </View>
+        );
+    }
+
+
+    return (
+        <>
+            <Tabs.Screen options={{
+                headerRight: () => (
+                    <Animatable.View style={tw`relative mr-5`} animation={"pulse"} iterationCount={"infinite"}>
+                        <View style={tw`w-5 h-5 bg-red-500 rounded-full items-center justify-center absolute z-9 top-[-2] right-[-2]`}>
+                            <TextTheme size='xs' color='white' style={tw`mt-0.5`}>5</TextTheme>
+                        </View>
+                        <TouchableOpacity style={tw`bg-slate-200 rounded-full p-2`}>
+                            <Ionicons name='chatbubble' color={String(tw.color("blue-500"))} size={20} />
+                        </TouchableOpacity>
+                    </Animatable.View>
+                ),
+                tabBarIcon: ({ color, focused }) => (
+                    <View style={tw`relative`}>
+                        {notifications.filter(val => val.status === "UNREAD").length > 0 ?
+                            <View style={tw`w-5 h-5 bg-red-500 rounded-full items-center justify-center absolute z-9 top-[-2] right-[-2]`}>
+                                <TextTheme size='xs' color='white' style={tw`mt-0.5`}>{notifications.filter(val => val.status === "UNREAD").length}</TextTheme>
+                            </View>
+                            : null}
+                        <Ionicons size={24} name={focused ? 'notifications' : 'notifications-outline'} color={color} />
+                    </View>
+                ),
+            }} />
+            <View style={tw`flex-1 bg-gray-50`}>
+                <TabController
+                    asCarousel
+                    items={tabItems.map(item => ({
+                        label: `${item.label}`,
+                        leadingAccessory: notifications.filter(n => n.status === item.key).length > 0 ?
+                            (<>
+                                <Ionicons
+                                    name={item.key === 'UNREAD' ? 'notifications' : 'mail-open'}
+                                    size={20}
+                                    color={String(tw.color("blue-500"))}
+                                    style={tw`mr-2`}
+                                />
+                                <View style={tw`w-4 h-4 absolute top-1 right-8 bg-red-500 rounded-full flex-row items-center justify-center`}>
+                                    <TextTheme font='Prompt-Light' size='xs' color='white' style={tw`ml-0.2 mt-0.4`}>{notifications.filter(n => n.status === item.key).length}</TextTheme>
+                                </View>
+                            </>) : <></>
+                    }))}
+                    initialIndex={selectedTab}
+                    onChangeIndex={setSelectedTab}
+                >
+                    <TabController.TabBar
+                        containerStyle={tw`absolute`}
+                        labelStyle={{ fontFamily: "Prompt-Regular" }}
+                        selectedLabelStyle={{ fontFamily: "Prompt-Regular" }}
+                        selectedLabelColor={String(tw.color("blue-500"))}
+                        selectedIconColor={String(tw.color("blue-500"))}
+                        iconColor={String(tw.color("blue-500"))}
+                        indicatorStyle={tw`bg-blue-500 h-0.5 rounded-full`}
+                    />
+                    <TabController.PageCarousel style={tw`mt-12`} scrollEnabled={false}>
+                        {tabItems.map((tab, index) => (
+                            <TabController.TabPage key={tab.key} index={index}>
+                                <ScrollView
+                                    refreshControl={
+                                        <RefreshControl
+                                            refreshing={refreshing}
+                                            onRefresh={handleRefresh}
+                                            colors={[String(tw.color("blue-500"))]}
+                                            tintColor={String(tw.color("blue-500"))}
+                                        />
+                                    }
+                                >
+                                    {renderNotifications(
+                                        notifications,
+                                        tab.key as 'READ' | 'UNREAD',
+                                        handleMarkAsRead,
+                                        handleDelete
+                                    )}
+                                    <View style={tw`pb-30`} />
+                                </ScrollView>
+                            </TabController.TabPage>
+                        ))}
+                    </TabController.PageCarousel>
+
+                    <NotificationForm
+                        visible={showNotificationForm}
+                        onClose={() => setShowNotificationForm(false)}
+                        onSubmit={(message) => {
+                            // อาจจะเพิ่มการจัดการหลังจากส่งการแจ้งเตือนที่นี่
+                            console.log('Notification sent:', message);
+                        }}
+                    />
+                    <View style={tw`flex-row justify-end p-2 bg-gray-50`}>
+                        <TouchableOpacity
+                            onPress={() => setShowNotificationForm(true)}
+                            style={tw`p-2 bg-blue-600 rounded-xl flex-row items-center gap-2`}
+                        >
+                            <TextTheme style={tw`text-white`}>ส่งการแจ้งเตือน</TextTheme>
+                            <Ionicons name='notifications' color="white" size={20} />
+                        </TouchableOpacity>
+                    </View>
+                </TabController>
+            </View>
+        </>
+    );
+};
+
+export default Notifications;

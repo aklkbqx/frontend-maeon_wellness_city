@@ -6,6 +6,8 @@ import { userTokenLogin } from '@/helper/my-lib';
 import { View } from 'react-native-ui-lib';
 import Loading from '@/components/Loading';
 import tw from "twrnc"
+import TextTheme from '@/components/TextTheme';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface RoleConfig {
     path: string;
@@ -58,11 +60,7 @@ function RootRedirect() {
     }, []);
 
     if (isChecking || isLoading) {
-        return (
-            <View style={tw`flex-1 justify-center items-center`}>
-                <Loading loading={isLoading} size={'large'} />
-            </View>
-        )
+        return <LoadingScreen />
     }
 
     if (shouldRedirectToHome) {

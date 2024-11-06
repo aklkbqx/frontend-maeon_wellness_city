@@ -6,7 +6,8 @@ import { formatDistance, formatTimeDistance } from "@/helper/utiles";
 import { FontAwesome5 } from "@expo/vector-icons";
 import React, { useEffect, useState, useMemo } from "react";
 import { getTurnDirection } from "./getTurnDirection";
-import { PlaceNames, RouteInfo } from "@/types/MapTracking";
+import { PlaceNames } from "@/types/MapTracking";
+import { RouteInfo } from "@/types/map";
 
 interface RenderRouteDetails_Type {
     routeInfo?: RouteInfo | null;

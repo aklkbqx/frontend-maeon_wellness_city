@@ -11,48 +11,10 @@ import api from '@/helper/api';
 import { handleAxiosError, handleErrorMessage } from '@/helper/my-lib';
 import Loading from '@/components/Loading';
 import TextTheme from '@/components/TextTheme';
+import { ApiResponse, MapLocation, TravelData } from '@/types/map';
+import { calculateDistance } from '@/helper/utiles';
 
-// API Response Types
-interface ApiDestination {
-    id: number;
-    name: string;
-    latitude: number;
-    longitude: number;
-    scheduledTime: string;
-    address: string;
-    isComplete: boolean;
-}
 
-interface ApiTravelData {
-    startInfo: {
-        time: string;
-        note: string;
-    };
-    endInfo: {
-        time: string;
-        note: string;
-    };
-    destinations: ApiDestination[];
-}
-
-interface ApiResponse {
-    success: boolean;
-    data: ApiTravelData;
-    message?: string;
-}
-
-// Component Types (matching MapTracking props requirements)
-interface MapDestination {
-    id: number;
-    keyword: string; // Maps to 'name' from API
-    scheduledTime: string;
-    isComplete: boolean;
-    latitude: number;
-    longitude: number;
-    address: string;
-}
-
-// API Services
 const mapApi = {
     fetchTravelData: async (bookingId: number): Promise<ApiResponse> => {
         try {
@@ -108,14 +70,16 @@ const ErrorScreen = ({ message }: { message: string }) => (
 );
 
 // Main Map Component
+// components/Map.tsx
 const Map = () => {
     const { bookingId } = useLocalSearchParams();
-    const [travelData, setTravelData] = useState<ApiTravelData | null>(null);
+    const [travelData, setTravelData] = useState<TravelData | null>(null);
     const [currentDestinationIndex, setCurrentDestinationIndex] = useState(0);
     const [completedDestinations, setCompletedDestinations] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // โหลดข้อมูลการเดินทาง
     const loadTravelData = useCallback(async () => {
         if (!bookingId) {
             setError('ไม่พบข้อมูลการจอง');
@@ -125,19 +89,24 @@ const Map = () => {
 
         try {
             setIsLoading(true);
-            const response = await mapApi.fetchTravelData(parseInt(bookingId as string));
-            if (response.success && response.data) {
-                setTravelData(response.data);
-                const completedIds = response.data.destinations
-                    .filter((dest: ApiDestination) => dest.isComplete)
-                    .map((dest: ApiDestination) => dest.id);
+            const response = await api.get<ApiResponse>(`/api/navigate-map/${bookingId}`);
+            
+            if (response.data.success && response.data.data) {
+                const { data } = response.data;
+                setTravelData(data);
+
+                // จัดการกับสถานที่ที่เสร็จสิ้นแล้ว
+                const completedIds = data.destinations
+                    .filter(dest => dest.isComplete)
+                    .map(dest => dest.id);
                 setCompletedDestinations(completedIds);
-                const nextIncompleteIndex = response.data.destinations
-                    .findIndex((dest: ApiDestination) => !dest.isComplete);
-                setCurrentDestinationIndex(nextIncompleteIndex === -1 ?
-                    response.data.destinations.length - 1 : nextIncompleteIndex);
-            } else {
-                throw new Error(response.message || 'ไม่สามารถโหลดข้อมูลได้');
+
+                // หาสถานที่ถัดไปที่ยังไม่เสร็จ
+                const nextIncomplete = data.destinations
+                    .findIndex(dest => !dest.isComplete);
+                setCurrentDestinationIndex(nextIncomplete === -1 
+                    ? data.destinations.length - 1 
+                    : nextIncomplete);
             }
         } catch (error) {
             handleAxiosError(error, (message) => {
@@ -149,69 +118,64 @@ const Map = () => {
         }
     }, [bookingId]);
 
+    // อัพเดทสถานะเมื่อถึงจุดหมาย
+    const handleDestinationComplete = async (destinationId: number) => {
+        try {
+            const result = await api.post<ApiResponse>(`/api/navigate-map/${bookingId}/complete`, {
+                locationId: destinationId
+            });
+
+            if (result.data.success) {
+                setCompletedDestinations(prev => [...prev, destinationId]);
+                
+                // เลื่อนไปจุดหมายถัดไป
+                if (currentDestinationIndex < (travelData?.destinations.length || 0) - 1) {
+                    setCurrentDestinationIndex(prev => prev + 1);
+                }
+
+                await loadTravelData(); // รีโหลดข้อมูลใหม่
+            }
+        } catch (error) {
+            handleAxiosError(error, handleErrorMessage);
+        }
+    };
+
+    // แปลงข้อมูลสำหรับ MapTracking component
+    const transformDestinations = useCallback((): MapLocation[] => {
+        if (!travelData) return [];
+        
+        return travelData.destinations.map(dest => ({
+            id: dest.id,
+            name: dest.location_name,
+            scheduledTime: dest.scheduledTime,
+            activity: dest.activity,
+            latitude: dest.latitude,
+            longitude: dest.longitude,
+            address: dest.address,
+            isComplete: completedDestinations.includes(dest.id),
+            description: dest.description,
+            type: dest.type
+        }));
+    }, [travelData, completedDestinations]);
+
+    // Effects
     useEffect(() => {
         loadTravelData();
     }, [loadTravelData]);
 
-    const handleDestinationComplete = async (destinationId: number) => {
-        try {
-            const result = await mapApi.updateDestinationStatus(
-                parseInt(bookingId as string),
-                destinationId
-            );
-
-            if (result.success) {
-                setCompletedDestinations(prev => [...prev, destinationId]);
-
-                if (currentDestinationIndex < (travelData?.destinations.length || 0) - 1) {
-                    setCurrentDestinationIndex(prev => prev + 1);
-                }
-            } else {
-                handleErrorMessage('ไม่สามารถอัพเดทสถานะได้');
-            }
-        } catch (error) {
-            handleAxiosError(error, (message) => {
-                handleErrorMessage(message);
-            });
-        }
-    };
-
-    const checkDestinationDistance = (userLat: number, userLng: number, destLat: number, destLng: number) => {
-        const R = 6371e3;
-        const φ1 = userLat * Math.PI / 180;
-        const φ2 = destLat * Math.PI / 180;
-        const Δφ = (destLat - userLat) * Math.PI / 180;
-        const Δλ = (destLng - userLng) * Math.PI / 180;
-
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c;
-    };
-
-    const handleLocationUpdate = useCallback((latitude: number, longitude: number) => {
-        if (!travelData || currentDestinationIndex >= travelData.destinations.length) return;
-
-        const currentDest = travelData.destinations[currentDestinationIndex];
-        const distance = checkDestinationDistance(
-            latitude,
-            longitude,
-            currentDest.latitude,
-            currentDest.longitude
-        );
-
-        if (distance <= 50 && !completedDestinations.includes(currentDest.id)) {
-            handleDestinationComplete(currentDest.id);
-        }
-    }, [travelData, currentDestinationIndex, completedDestinations]);
-
     if (isLoading) {
-        return (
-            <>
-                <StatusBar style='light' />
-                <Stack.Screen options={{
+        return <LoadingScreen />;
+    }
+
+    if (error || !travelData) {
+        return <ErrorScreen message={error || 'ไม่พบข้อมูล'} />;
+    }
+
+    return (
+        <>
+            <StatusBar style='light' />
+            <Stack.Screen 
+                options={{
                     headerShown: true,
                     headerTitle: "",
                     headerTransparent: true,
@@ -223,58 +187,29 @@ const Map = () => {
                             <Ionicons name="chevron-back" size={24} color={tw.color('black')} />
                         </TouchableOpacity>
                     )
-                }} />
-                <LoadingScreen />
-            </>
-        );
-    }
-
-    if (error || !travelData) {
-        return (
-            <>
-                <StatusBar style='light' />
-                <Stack.Screen options={{
-                    headerShown: true,
-                    headerTitle: "",
-                    headerTransparent: true
-                }} />
-                <ErrorScreen message={error || 'ไม่พบข้อมูล'} />
-            </>
-        );
-    }
-
-    // Transform API destinations to match MapTracking component requirements
-    const destinations: MapDestination[] = travelData.destinations.map((dest: ApiDestination) => ({
-        id: dest.id,
-        keyword: dest.name, // Map 'name' to required 'keyword'
-        scheduledTime: dest.scheduledTime,
-        isComplete: completedDestinations.includes(dest.id),
-        latitude: dest.latitude,
-        longitude: dest.longitude,
-        address: dest.address
-    }));
-
-    return (
-        <>
-            <StatusBar style='light' />
-            <Stack.Screen options={{
-                headerShown: true,
-                headerTitle: "",
-                headerTransparent: true,
-                headerLeft: () => (
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        style={tw`flex-row items-center bg-white rounded-full p-2`}
-                    >
-                        <Ionicons name="chevron-back" size={24} color={tw.color('black')} />
-                    </TouchableOpacity>
-                )
-            }} />
+                }} 
+            />
             {/* <MapTracking
-                destinations={destinations}
+                destinations={transformDestinations()}
                 currentDestinationIndex={currentDestinationIndex}
                 onDestinationComplete={handleDestinationComplete}
-                onLocationUpdate={handleLocationUpdate}
+                onLocationUpdate={(lat, lng) => {
+                    // เช็คระยะทางกับจุดหมายปัจจุบัน
+                    const currentDest = travelData.destinations[currentDestinationIndex];
+                    if (!currentDest) return;
+
+                    const distance = calculateDistance(
+                        lat,
+                        lng,
+                        parseFloat(currentDest.latitude),
+                        parseFloat(currentDest.longitude)
+                    );
+
+                    // ถ้าอยู่ในรัศมี 50 เมตร ถือว่าถึงแล้ว
+                    if (distance <= 0.05 && !completedDestinations.includes(currentDest.id)) {
+                        handleDestinationComplete(currentDest.id);
+                    }
+                }}
             /> */}
         </>
     );

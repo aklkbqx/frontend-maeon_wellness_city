@@ -4,7 +4,7 @@ const packageMaeon = "com.maeonwellnesscity";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config,
-    name: 'MaeOn Wellness City',
+    name: 'Mae-On Wellness City',
     slug: 'maeonwellnesscity',
     version: '1.0.0',
     orientation: 'portrait',
@@ -51,6 +51,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         favicon: "./assets/images/favicon.png"
     },
     plugins: [
-        "expo-router"
+        "expo-router",
+        [
+            "expo-notifications",
+            {
+                "icon": "./assets/images/notification-icon.png",
+                "color": "#ffffff",
+                "defaultChannel": "default",
+                // "sounds": [
+                //     "./local/assets/notification-sound.wav",
+                //     "./local/assets/notification-sound-other.wav"
+                // ]
+            }
+        ]
     ]
 });

@@ -15,19 +15,17 @@ interface LogoutModalProps {
 
 const LogoutModal: React.FC<LogoutModalProps> = ({ isVisible, onClose, onLogout }) => {
     const [isLoading, setIsLoading] = useState(false);
-    const { disconnectWebSocket } = useNotification();
 
     const handleLogout = () => {
         setIsLoading(true);
-        disconnectWebSocket();
         onLogout();
         setTimeout(() => {
             setIsLoading(false);
             onClose();
         }, 1000);
-        setTimeout(() => {
-            router.navigate('/logout');
-        }, 1000);
+        // setTimeout(() => {
+        //     router.navigate('/logout');
+        // }, 1000);
     };
 
     return (

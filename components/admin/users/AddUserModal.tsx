@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Modal, TouchableOpacity, ScrollView, TextInput, Pressable } from 'react-native';
+import { View, TextInput, ScrollView } from 'react-native';
+import { Dialog, TouchableOpacity } from 'react-native-ui-lib';
 import { Ionicons } from '@expo/vector-icons';
 import tw from 'twrnc';
 import TextTheme from '@/components/TextTheme';
 import { UsersRole } from '@/types/PrismaType';
 
-interface AddUserModalProps {
+interface AddUserDialogProps {
     isVisible: boolean;
     onClose: () => void;
     onSubmit: (userData: CreateUserData) => Promise<void>;
@@ -53,7 +54,7 @@ const roleOptions: Array<{ label: string; value: UsersRole }> = [
     }
 ];
 
-const AddUserModal: React.FC<AddUserModalProps> = ({
+const AddUserDialog: React.FC<AddUserDialogProps> = ({
     isVisible,
     onClose,
     onSubmit,
@@ -178,116 +179,127 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
         </View>
     );
 
+    const handleClose = () => {
+        setFormData({
+            firstname: '',
+            lastname: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            tel: '',
+            role: 'user' as UsersRole
+        });
+        setErrors({});
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        onClose();
+    };
+
     return (
-        <Modal
+        <Dialog
             visible={isVisible}
-            animationType="fade"
-            transparent
-            onRequestClose={onClose}
+            onDialogDismissed={handleClose}
         >
-            <Pressable
-                style={tw`flex-1 bg-black/50 justify-center items-center`}
-                onPress={onClose}
-            >
-                <Pressable
-                    style={tw`bg-white w-[95%] rounded-2xl h-[85%]`}
-                    onPress={e => e.stopPropagation()}
-                >
+            <View style={tw`h-full justify-center items-center`}>
+                <View style={tw`bg-white rounded-2xl h-[85%] max-w-md mx-auto w-full`}>
+
                     {/* Header */}
                     <View style={tw`flex-row justify-between items-center p-4 border-b border-gray-200`}>
                         <TextTheme font="Prompt-SemiBold" size="xl">
                             เพิ่มสมาชิกใหม่
                         </TextTheme>
-                        <TouchableOpacity onPress={onClose}>
+                        <TouchableOpacity onPress={handleClose}>
                             <Ionicons name="close" size={24} color="#6B7280" />
                         </TouchableOpacity>
                     </View>
 
                     {/* Form */}
-                    <ScrollView style={tw`p-4`}>
-                        <CustomInput
-                            label="ชื่อ"
-                            value={formData.firstname}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, firstname: text }))}
-                            error={errors.firstname}
-                            placeholder="กรอกชื่อ"
-                        />
+                    <ScrollView>
+                        <View style={tw`p-4`}>
+                            <CustomInput
+                                label="ชื่อ"
+                                value={formData.firstname}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, firstname: text }))}
+                                error={errors.firstname}
+                                placeholder="กรอกชื่อ"
+                            />
 
-                        <CustomInput
-                            label="นามสกุล"
-                            value={formData.lastname}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, lastname: text }))}
-                            error={errors.lastname}
-                            placeholder="กรอกนามสกุล"
-                        />
+                            <CustomInput
+                                label="นามสกุล"
+                                value={formData.lastname}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, lastname: text }))}
+                                error={errors.lastname}
+                                placeholder="กรอกนามสกุล"
+                            />
 
-                        <CustomInput
-                            label="อีเมล"
-                            value={formData.email}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-                            error={errors.email}
-                            placeholder="example@email.com"
-                            keyboardType="email-address"
-                        />
+                            <CustomInput
+                                label="อีเมล"
+                                value={formData.email}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
+                                error={errors.email}
+                                placeholder="example@email.com"
+                                keyboardType="email-address"
+                            />
 
-                        <CustomInput
-                            label="เบอร์โทรศัพท์"
-                            value={formData.tel}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, tel: text }))}
-                            error={errors.tel}
-                            placeholder="0xxxxxxxxx"
-                            keyboardType="numeric"
-                        />
+                            <CustomInput
+                                label="เบอร์โทรศัพท์"
+                                value={formData.tel}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, tel: text }))}
+                                error={errors.tel}
+                                placeholder="0xxxxxxxxx"
+                                keyboardType="numeric"
+                            />
 
-                        <CustomInput
-                            label="รหัสผ่าน"
-                            value={formData.password}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
-                            error={errors.password}
-                            placeholder="กรอกรหัสผ่าน"
-                            secureTextEntry={!showPassword}
-                            showPasswordToggle
-                            isPasswordVisible={showPassword}
-                            onTogglePassword={() => setShowPassword(!showPassword)}
-                        />
+                            <CustomInput
+                                label="รหัสผ่าน"
+                                value={formData.password}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
+                                error={errors.password}
+                                placeholder="กรอกรหัสผ่าน"
+                                secureTextEntry={!showPassword}
+                                showPasswordToggle
+                                isPasswordVisible={showPassword}
+                                onTogglePassword={() => setShowPassword(!showPassword)}
+                            />
 
-                        <CustomInput
-                            label="ยืนยันรหัสผ่าน"
-                            value={formData.confirmPassword}
-                            onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
-                            error={errors.confirmPassword}
-                            placeholder="กรอกรหัสผ่านอีกครั้ง"
-                            secureTextEntry={!showConfirmPassword}
-                            showPasswordToggle
-                            isPasswordVisible={showConfirmPassword}
-                            onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                        />
+                            <CustomInput
+                                label="ยืนยันรหัสผ่าน"
+                                value={formData.confirmPassword}
+                                onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
+                                error={errors.confirmPassword}
+                                placeholder="กรอกรหัสผ่านอีกครั้ง"
+                                secureTextEntry={!showConfirmPassword}
+                                showPasswordToggle
+                                isPasswordVisible={showConfirmPassword}
+                                onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                            />
 
-                        <View style={tw`mb-4`}>
-                            <TextTheme font="Prompt-Medium" style={tw`mb-1 text-gray-700`}>
-                                ประเภทผู้ใช้
-                            </TextTheme>
-                            <View style={tw`bg-white border border-gray-200 rounded-xl overflow-hidden mb-2`}>
-                                {roleOptions.map((option, index) => (
-                                    <TouchableOpacity
-                                        key={option.value}
-                                        style={tw`
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-1 text-gray-700`}>
+                                    ประเภทผู้ใช้
+                                </TextTheme>
+                                <View style={tw`bg-white border border-gray-200 rounded-xl overflow-hidden`}>
+                                    {roleOptions.map((option, index) => (
+                                        <TouchableOpacity
+                                            key={option.value}
+                                            style={tw`
                                             flex-row items-center justify-between p-3
                                             ${index !== roleOptions.length - 1 ? 'border-b border-gray-100' : ''}
                                             ${formData.role === option.value ? 'bg-indigo-50' : ''}
                                         `}
-                                        onPress={() => setFormData(prev => ({ ...prev, role: option.value }))}
-                                    >
-                                        <TextTheme style={tw`
+                                            onPress={() => setFormData(prev => ({ ...prev, role: option.value }))}
+                                        >
+                                            <TextTheme style={tw`
                                             ${formData.role === option.value ? 'text-indigo-600' : 'text-gray-700'}
                                         `}>
-                                            {option.label}
-                                        </TextTheme>
-                                        {formData.role === option.value && (
-                                            <Ionicons name="checkmark-circle" size={20} color="#4F46E5" />
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
+                                                {option.label}
+                                            </TextTheme>
+                                            {formData.role === option.value && (
+                                                <Ionicons name="checkmark-circle" size={20} color="#4F46E5" />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
                         </View>
                     </ScrollView>
@@ -307,10 +319,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                             </TextTheme>
                         </TouchableOpacity>
                     </View>
-                </Pressable>
-            </Pressable>
-        </Modal>
+                </View>
+            </View>
+        </Dialog>
     );
 };
 
-export default AddUserModal;
+export default AddUserDialog;

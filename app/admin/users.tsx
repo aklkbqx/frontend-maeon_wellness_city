@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, TouchableOpacity, FlatList, RefreshControl, Image, TextInput } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
 import TextTheme from '@/components/TextTheme';
-import { Users, UsersAccountStatus, UsersRole, UsersUsageStatus } from '@/types/PrismaType';
+import { Users } from '@/types/PrismaType';
 import UserRoleBadge from '@/components/UserRoleBadge';
 import AddUserModal, { CreateUserData } from '@/components/admin/users/AddUserModal';
+import api from '@/helper/api';
+import { handleAxiosError, handleErrorMessage } from '@/helper/my-lib';
+import Loading from '@/components/Loading';
+import LoadingScreen from '@/components/LoadingScreen';
 
-// Components
 interface SearchBarProps {
     value: string;
     onChangeText: (text: string) => void;
@@ -106,66 +109,6 @@ const UserListItem: React.FC<UserListItemProps> = ({ user, onPress }) => (
     </TouchableOpacity>
 );
 
-// Mock Data
-const mockUsers: Users[] = [
-    {
-        id: 1,
-        firstname: "John",
-        lastname: "Doe",
-        email: "john@example.com",
-        password: "hashed_password",
-        tel: "0123456789",
-        profile_picture: "/uploads/profile/1.jpg",
-        role: "admin" as UsersRole,
-        usage_status: "OFFLINE" as UsersUsageStatus,
-        status_last_update: new Date(),
-        account_status: "ACTIVE" as UsersAccountStatus,
-        created_at: new Date(),
-        updated_at: new Date(),
-        bookings: [], // Bookings[]
-        locations: [], // Locations[]
-        notifications: [], // Notifications[]
-        programs: [], // Programs[]
-    },
-    {
-        id: 2,
-        firstname: "Jane",
-        lastname: "Smith",
-        email: "jane@example.com",
-        password: "hashed_password",
-        tel: "0987654321",
-        profile_picture: "/uploads/profile/2.jpg",
-        role: "user" as UsersRole,
-        usage_status: "ONLINE" as UsersUsageStatus,
-        status_last_update: new Date(),
-        account_status: "ACTIVE" as UsersAccountStatus,
-        created_at: new Date(),
-        updated_at: new Date(),
-        bookings: [],
-        locations: [],
-        notifications: [],
-        programs: [],
-    },
-    {
-        id: 3,
-        firstname: "Hospital",
-        lastname: "Admin",
-        email: "hospital@example.com",
-        password: "hashed_password",
-        tel: "0123456789",
-        profile_picture: undefined,
-        role: "hospital" as UsersRole,
-        usage_status: "OFFLINE" as UsersUsageStatus,
-        status_last_update: new Date(),
-        account_status: "ACTIVE" as UsersAccountStatus,
-        created_at: new Date(),
-        bookings: [],
-        locations: [],
-        notifications: [],
-        programs: [],
-    }
-];
-
 export default function UsersScreen() {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
@@ -173,6 +116,8 @@ export default function UsersScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [users, setUsers] = useState<Users[] | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
     const roles = [
         { label: 'ทั้งหมด', value: null },
@@ -183,24 +128,31 @@ export default function UsersScreen() {
         { label: 'สถานที่ท่องเที่ยว', value: 'attractions' },
     ];
 
-    const filteredUsers = mockUsers.filter(user => {
-        const matchesSearch =
-            user.firstname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.lastname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesRole = selectedRole ? user.role === selectedRole : true;
-
-        return matchesSearch && matchesRole;
-    });
-
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
         setIsLoading(true);
-        // Simulate refresh
-        setTimeout(() => {
-            setIsLoading(false);
-        }, 1000);
+        await fetchAllUser()
+        setIsLoading(false);
     };
+
+    const fetchAllUser = async () => {
+        setIsLoading(true);
+        try {
+            const response = await api.get("/api/users");
+            if (response.data.success) {
+                setUsers(response.data.users)
+            }
+        } catch (error) {
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(message);
+            })
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    useFocusEffect(useCallback(() => {
+        fetchAllUser()
+    }, []))
 
     const handleAddUser = async (userData: CreateUserData) => {
         try {
@@ -208,7 +160,6 @@ export default function UsersScreen() {
             // const response = await api.post('/api/users', userData);
             console.log('Creating user:', userData);
 
-            // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             setIsAddModalVisible(false);
@@ -218,13 +169,26 @@ export default function UsersScreen() {
             // Show success message
             // useShowToast("success", "สำเร็จ", "เพิ่มสมาชิกเรียบร้อยแล้ว");
         } catch (error) {
-            // Handle error
-            console.error('Error creating user:', error);
-            // useShowToast("error", "ข้อผิดพลาด", "ไม่สามารถเพิ่มสมาชิกได้");
+            handleAxiosError(error, (message) => {
+                handleErrorMessage(error);
+            })
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    if (!users || isRefreshing) {
+        return <LoadingScreen />
+    }
+
+    const filteredUsers = users.filter(user => {
+        const matchesSearch =
+            user.firstname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.lastname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesRole = selectedRole ? user.role === selectedRole : true;
+        return matchesSearch && matchesRole;
+    });
 
     return (
         <View style={tw`flex-1 bg-gray-50`}>
@@ -284,7 +248,7 @@ export default function UsersScreen() {
                 ItemSeparatorComponent={() => <View style={tw`h-2`} />}
                 refreshControl={
                     <RefreshControl
-                        refreshing={isLoading}
+                        refreshing={isRefreshing}
                         onRefresh={handleRefresh}
                         colors={[String(tw.color('indigo-600'))]}
                         tintColor={String(tw.color('indigo-600'))}

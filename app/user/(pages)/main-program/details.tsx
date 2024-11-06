@@ -20,6 +20,7 @@ import { useStatusBar } from '@/hooks/useStatusBar';
 import api, { apiUrl } from '@/helper/api';
 import { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
 import * as Animatable from 'react-native-animatable';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface BookingItem {
     people: number;
@@ -215,11 +216,7 @@ const DetailProgramScreen: React.FC = () => {
     }
 
     if (!programDetail) {
-        return (
-            <View style={tw`flex-1 justify-center items-center`}>
-                <Loading loading={true} />
-            </View>
-        );
+        return <LoadingScreen />
     }
 
     const images = programDetail.images || [];

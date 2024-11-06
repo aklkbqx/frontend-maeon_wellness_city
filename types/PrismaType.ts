@@ -1,3 +1,20 @@
+export interface Contact {
+    tel?: string[];
+    line_id?: string;
+    email?: string;
+    meeting_point?: {
+        name: string;
+        latitude: string;
+        longitude: string;
+    };
+}
+export interface DateInfo {
+    text: string;
+    start?: string;
+    end?: string;
+    pre_booking_days?: number;
+    note?: string;
+}
 export interface Accommodation {
     id: number;
     location_id: number;
@@ -90,9 +107,9 @@ export interface Locations {
     id: number;
     name: string;
     type: number;
-    map?: string;
+    map?: string | { latitude: string; longitude: string; };
+    time_slots?: string | string[];
     note?: string;
-    time_slots?: string;
     owner_id?: number;
     isActive: boolean;
     created_at?: Date;

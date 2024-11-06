@@ -19,6 +19,7 @@ import { BANK_RECEIVER } from '@/constants/payments';
 import { useNotification } from '@/context/NotificationProvider';
 import { Payments } from '@/types/PrismaType';
 import axios from 'axios';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const KEY_OPENSLIP = process.env.EXPO_PUBLIC_KEY_OPENSLIP;
 
@@ -382,11 +383,7 @@ const Payment = () => {
     };
 
     if (loading) {
-        return (
-            <View style={tw`flex-1 justify-center items-center`}>
-                <Loading loading={loading} />
-            </View>
-        );
+        return <LoadingScreen />
     }
 
     return (

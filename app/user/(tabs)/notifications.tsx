@@ -283,7 +283,9 @@ const Notifications: React.FC = () => {
         setNotifications(response.data.notifications);
       }
     } catch (error) {
-      handleAxiosError(error, handleErrorMessage);
+      handleAxiosError(error, (message) => {
+        handleErrorMessage(message)
+      })
     } finally {
       setIsLoading(false);
     }
@@ -312,7 +314,9 @@ const Notifications: React.FC = () => {
         );
       }
     } catch (error) {
-      handleAxiosError(error, handleErrorMessage);
+      handleAxiosError(error, (message) => {
+        handleErrorMessage(message)
+    })
     }
   };
 
@@ -323,7 +327,9 @@ const Notifications: React.FC = () => {
         setNotifications(prev => prev.filter(item => item.id !== id));
       }
     } catch (error) {
-      handleAxiosError(error, handleErrorMessage);
+      handleAxiosError(error, (message) => {
+        handleErrorMessage(message)
+    })
     }
   };
 
