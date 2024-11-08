@@ -46,7 +46,6 @@ export interface NotificationData {
   dev?: boolean
 }
 
-// Interface สำหรับการตอบกลับจาก API
 export interface NotificationResponse {
   success: boolean;
   message?: string;

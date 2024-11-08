@@ -108,7 +108,6 @@ function AdminLayout() {
             <Tabs.Screen
                 name="dashboard"
                 options={{
-                    headerShown: true,
                     title: 'หน้าแรก',
                     tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'home' : 'home-outline'} color={color} />,
                     header: () => (
@@ -133,6 +132,7 @@ function AdminLayout() {
                 options={{
                     title: 'จัดการสมาชิก',
                     tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'people' : 'people-outline'} color={color} />,
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -147,8 +147,23 @@ function AdminLayout() {
             <Tabs.Screen
                 name="notifications"
                 options={{
-                    title: 'แจ้งเตือน',
+                    title: 'การแจ้งเตือน',
                     tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'notifications' : 'notifications-outline'} color={color} />,
+                    header: () => (
+                        <View style={tw`bg-white border-b border-gray-200`}>
+                            <View style={tw`px-4 pt-14 pb-4`}>
+                                <View style={tw`flex-row justify-between items-center mb-4`}>
+                                    <View style={tw`bg-slate-200 rounded-xl w-30 p-4`} />
+                                    <View style={tw`bg-slate-200 w-30 p-5 rounded-xl flex-row items-center`} />
+                                </View>
+
+                                <View style={tw`flex-row items-center gap-10 mt-3`}>
+                                    <View style={tw`bg-slate-200 flex-1 p-5 rounded-xl`} />
+                                    <View style={tw`bg-slate-200 flex-1 p-5 rounded-xl`} />
+                                </View>
+                            </View>
+                        </View>
+                    )
                 }}
             />
             <Tabs.Screen
@@ -158,28 +173,6 @@ function AdminLayout() {
                     tabBarIcon: ({ color, focused }) => <Ionicons size={24} name={focused ? 'person' : 'person-outline'} color={color} />,
                 }}
             />
-            {/*
-            
-
-            <Tabs.Screen
-                name="bookings"
-                options={{
-                    title: 'Bookings',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="calendar-outline" size={size} color={color} />
-                    ),
-                }}
-            />
-
-            <Tabs.Screen
-                name="settings"
-                options={{
-                    title: 'Settings',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="settings-outline" size={size} color={color} />
-                    ),
-                }}
-            /> */}
         </Tabs>
     );
 }

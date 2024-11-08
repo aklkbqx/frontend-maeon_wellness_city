@@ -1,7 +1,7 @@
 // components/admin/locations/LocationDetail.tsx
 import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Image, TextInput, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import tw from 'twrnc';
 import TextTheme from '@/components/TextTheme';
@@ -144,54 +144,59 @@ const LocationDetail: React.FC = () => {
     return (
         <View style={tw`flex-1 bg-gray-50`}>
             {/* Header */}
-            < View style={tw`bg-white border-b border-gray-200`}>
-                <View style={tw`px-4 pt-14 pb-4 flex-row justify-between items-center`}>
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        style={tw`flex-row items-center`}
-                    >
-                        <Ionicons name="arrow-back" size={24} color="#374151" />
-                        <TextTheme style={tw`ml-2`}> ย้อนกลับ </TextTheme>
-                    </TouchableOpacity>
-                    <View style={tw`flex-row gap-2`}>
-                        {
-                            isEditing ? (
-                                <>
-                                    <TouchableOpacity
-                                        onPress={() => setIsEditing(false)}
-                                        style={tw`px-4 py-2 bg-gray-100 rounded-xl`}
-                                    >
-                                        <TextTheme>ยกเลิก </TextTheme>
-                                    </TouchableOpacity>
-                                    < TouchableOpacity
-                                        onPress={handleSave}
-                                        style={tw`px-4 py-2 bg-blue-600 rounded-xl flex-row items-center gap-2`}
-                                    >
-                                        <TextTheme color="white" > บันทึก </TextTheme>
-                                        < Ionicons name="save" size={20} color="white" />
-                                    </TouchableOpacity>
-                                </>
-                            ) : (
-                                <>
-                                    <TouchableOpacity
-                                        onPress={() => setIsEditing(true)}
-                                        style={tw`px-4 py-2 bg-blue-600 rounded-xl flex-row items-center gap-2`}
-                                    >
-                                        <TextTheme color="white" > แก้ไข </TextTheme>
-                                        < Ionicons name="create" size={20} color="white" />
-                                    </TouchableOpacity>
-                                    < TouchableOpacity
-                                        onPress={() => setIsDeleteDialogVisible(true)}
-                                        style={tw`px-4 py-2 bg-red-600 rounded-xl flex-row items-center gap-2`}
-                                    >
-                                        <TextTheme color="white" > ลบ </TextTheme>
-                                        < Ionicons name="trash" size={20} color="white" />
-                                    </TouchableOpacity>
-                                </>
-                            )}
-                    </View>
-                </View>
-            </View>
+            <Stack.Screen
+                options={{
+                    header: () => (
+                        <View style={tw`bg-white border-b border-gray-200`}>
+                            <View style={tw`px-4 pt-20 pb-4 flex-row justify-between items-center`}>
+                                <TouchableOpacity
+                                    onPress={() => router.back()}
+                                    style={tw`flex-row items-center`}
+                                >
+                                    <Ionicons name="arrow-back" size={24}/>
+                                </TouchableOpacity>
+                                <View style={tw`flex-row gap-2`}>
+                                    {
+                                        isEditing ? (
+                                            <>
+                                                <TouchableOpacity
+                                                    onPress={() => setIsEditing(false)}
+                                                    style={tw`px-4 py-2 bg-gray-100 rounded-xl`}
+                                                >
+                                                    <TextTheme>ยกเลิก</TextTheme>
+                                                </TouchableOpacity>
+                                                < TouchableOpacity
+                                                    onPress={handleSave}
+                                                    style={tw`px-4 py-2 bg-blue-600 rounded-xl flex-row items-center gap-2`}
+                                                >
+                                                    <TextTheme color="white" > บันทึก </TextTheme>
+                                                    < Ionicons name="save" size={20} color="white" />
+                                                </TouchableOpacity>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <TouchableOpacity
+                                                    onPress={() => setIsEditing(true)}
+                                                    style={tw`px-4 py-2 bg-blue-600 rounded-xl flex-row items-center gap-2`}
+                                                >
+                                                    <TextTheme color="white" > แก้ไข </TextTheme>
+                                                    < Ionicons name="create" size={20} color="white" />
+                                                </TouchableOpacity>
+                                                < TouchableOpacity
+                                                    onPress={() => setIsDeleteDialogVisible(true)}
+                                                    style={tw`px-4 py-2 bg-red-600 rounded-xl flex-row items-center gap-2`}
+                                                >
+                                                    <TextTheme color="white" > ลบ </TextTheme>
+                                                    < Ionicons name="trash" size={20} color="white" />
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                </View>
+                            </View>
+                        </View>
+                    )
+                }}
+            />
 
             {/* Content */}
             <ScrollView>

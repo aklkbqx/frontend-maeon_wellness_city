@@ -66,22 +66,22 @@ export const VersionCheckProvider: React.FC<VersionCheckProviderProps> = ({
 
             // const skipVersion = await AsyncStorage.getItem('skipVersion');
 
-            const { data: result } = await api.post<VersionResponse>('/api/check-version', {
-                platform: Platform.OS,
-                currentVersion,
-            });
+            // const { data: result } = await api.post<VersionResponse>('/api/check-version', {
+            //     platform: Platform.OS,
+            //     currentVersion,
+            // });
 
-            if (!result.success || !result.data) {
-                throw new Error(result.error || 'Failed to check version');
-            }
+            // if (!result.success || !result.data) {
+            //     throw new Error(result.error || 'Failed to check version');
+            // }
 
-            const {
-                needsUpdate: needsUpdateNew,
-                forceUpdate: forceUpdateNew,
-                latestVersion: latestVersionNew,
-                storeUrl: storeUrlNew,
-                releaseNotes: releaseNotesNew
-            } = result.data;
+            // const {
+            //     needsUpdate: needsUpdateNew,
+            //     forceUpdate: forceUpdateNew,
+            //     latestVersion: latestVersionNew,
+            //     storeUrl: storeUrlNew,
+            //     releaseNotes: releaseNotesNew
+            // } = result.data;
 
             // if (skipVersion === latestVersionNew && !forceUpdateNew) {
             //     setNeedsUpdate(false);
@@ -91,12 +91,12 @@ export const VersionCheckProvider: React.FC<VersionCheckProviderProps> = ({
             //     setForceUpdate(forceUpdateNew);
             // }
 
-            setNeedsUpdate(needsUpdateNew);
-            setForceUpdate(forceUpdateNew);
+            // setNeedsUpdate(needsUpdateNew);
+            // setForceUpdate(forceUpdateNew);
 
-            setLatestVersion(latestVersionNew);
-            setStoreUrl(storeUrlNew);
-            setReleaseNotes(releaseNotesNew);
+            // setLatestVersion(latestVersionNew);
+            // setStoreUrl(storeUrlNew);
+            // setReleaseNotes(releaseNotesNew);
 
         } catch (error) {
             console.error('Version check failed:', error);

@@ -71,24 +71,24 @@ const PublicReceiptScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchReceipt = async () => {
-            try {
-                const response = await api.get(`/api/bookings/public-booking/${id}`);
-                if (response.data.success) {
-                    setReceipt(response.data.data);
-                } else {
-                    setError('ไม่พบข้อมูลการจอง');
-                }
-            } catch (err) {
-                setError('ไม่พบใบเสร็จที่คุณต้องการ หรือลิงก์อาจหมดอายุ');
-            } finally {
-                setLoading(false);
-            }
-        };
+    // const fetchReceipt = async () => {
+    //     try {
+    //         const response = await api.get(`/api/bookings/public-booking/${id}`);
+    //         if (response.data.success) {
+    //             setReceipt(response.data.data);
+    //         } else {
+    //             setError('ไม่พบข้อมูลการจอง');
+    //         }
+    //     } catch (err) {
+    //         setError('ไม่พบใบเสร็จที่คุณต้องการ หรือลิงก์อาจหมดอายุ');
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
 
-        fetchReceipt();
-    }, [id]);
+    // useEffect(() => {
+    //     fetchReceipt();
+    // }, [id]);
 
     if (loading) {
         return (

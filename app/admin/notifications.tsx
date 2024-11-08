@@ -139,7 +139,7 @@ const NotificationSkeletonLoader = () => (
 const NoNotifications = () => (
     <View style={tw`flex-1 justify-center mt-20 items-center`}>
         <View style={tw`bg-slate-200 rounded-full p-4 mb-4`}>
-            <Ionicons name="notifications-off-outline" size={50} style={tw`text-blue-500`} />
+            <Ionicons name="notifications-off-outline" size={50} style={tw`text-indigo-500`} />
         </View>
         <View style={tw`items-center gap-1`}>
             <TextTheme font='Prompt-Medium' size='lg' style={tw`text-slate-600`}>
@@ -172,7 +172,7 @@ const renderNotifications = (
                     <Ionicons
                         name={readStatus === 'UNREAD' ? "notifications" : "checkmark-circle"}
                         size={50}
-                        style={tw`text-blue-500`}
+                        style={tw`text-indigo-500`}
                     />
                 </View>
                 <TextTheme font='Prompt-Medium' size='lg' style={tw`text-slate-600`}>
@@ -361,16 +361,6 @@ const Notifications: React.FC = () => {
     return (
         <>
             <Tabs.Screen options={{
-                headerRight: () => (
-                    <Animatable.View style={tw`relative mr-5`} animation={"pulse"} iterationCount={"infinite"}>
-                        <View style={tw`w-5 h-5 bg-red-500 rounded-full items-center justify-center absolute z-9 top-[-2] right-[-2]`}>
-                            <TextTheme size='xs' color='white' style={tw`mt-0.5`}>5</TextTheme>
-                        </View>
-                        <TouchableOpacity style={tw`bg-slate-200 rounded-full p-2`}>
-                            <Ionicons name='chatbubble' color={String(tw.color("blue-500"))} size={20} />
-                        </TouchableOpacity>
-                    </Animatable.View>
-                ),
                 tabBarIcon: ({ color, focused }) => (
                     <View style={tw`relative`}>
                         {notifications.filter(val => val.status === "UNREAD").length > 0 ?
@@ -381,6 +371,25 @@ const Notifications: React.FC = () => {
                         <Ionicons size={24} name={focused ? 'notifications' : 'notifications-outline'} color={color} />
                     </View>
                 ),
+                header: () => (
+                    <View style={tw`bg-white border-b border-gray-200`}>
+                        <View style={tw`px-4 pt-14`}>
+                            <View style={tw`flex-row justify-between items-center mb-4`}>
+                                <TextTheme font="Prompt-SemiBold" size="xl" style={tw`text-gray-900`}>
+                                    การแจ้งเตือน
+                                </TextTheme>
+                                <View style={tw`flex-row justify-end bg-gray-50`}>
+                                    <TouchableOpacity
+                                        onPress={() => setShowNotificationForm(true)}
+                                        style={tw`px-4 py-2.5 bg-indigo-600 rounded-xl flex-row items-center gap-2`}>
+                                        <TextTheme style={tw`text-white`}>ส่งการแจ้งเตือน</TextTheme>
+                                        <Ionicons name='notifications' color="white" size={20} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                )
             }} />
             <View style={tw`flex-1 bg-gray-50`}>
                 <TabController
@@ -392,7 +401,7 @@ const Notifications: React.FC = () => {
                                 <Ionicons
                                     name={item.key === 'UNREAD' ? 'notifications' : 'mail-open'}
                                     size={20}
-                                    color={String(tw.color("blue-500"))}
+                                    color={String(tw.color("indigo-500"))}
                                     style={tw`mr-2`}
                                 />
                                 <View style={tw`w-4 h-4 absolute top-1 right-8 bg-red-500 rounded-full flex-row items-center justify-center`}>
@@ -407,10 +416,10 @@ const Notifications: React.FC = () => {
                         containerStyle={tw`absolute`}
                         labelStyle={{ fontFamily: "Prompt-Regular" }}
                         selectedLabelStyle={{ fontFamily: "Prompt-Regular" }}
-                        selectedLabelColor={String(tw.color("blue-500"))}
-                        selectedIconColor={String(tw.color("blue-500"))}
-                        iconColor={String(tw.color("blue-500"))}
-                        indicatorStyle={tw`bg-blue-500 h-0.5 rounded-full`}
+                        selectedLabelColor={String(tw.color("indigo-500"))}
+                        selectedIconColor={String(tw.color("indigo-500"))}
+                        iconColor={String(tw.color("indigo-500"))}
+                        indicatorStyle={tw`bg-indigo-500 h-0.5 rounded-full`}
                     />
                     <TabController.PageCarousel style={tw`mt-12`} scrollEnabled={false}>
                         {tabItems.map((tab, index) => (
@@ -420,8 +429,8 @@ const Notifications: React.FC = () => {
                                         <RefreshControl
                                             refreshing={refreshing}
                                             onRefresh={handleRefresh}
-                                            colors={[String(tw.color("blue-500"))]}
-                                            tintColor={String(tw.color("blue-500"))}
+                                            colors={[String(tw.color("indigo-500"))]}
+                                            tintColor={String(tw.color("indigo-500"))}
                                         />
                                     }
                                 >
@@ -441,18 +450,19 @@ const Notifications: React.FC = () => {
                         visible={showNotificationForm}
                         onClose={() => setShowNotificationForm(false)}
                         onSubmit={(message) => {
-                            // อาจจะเพิ่มการจัดการหลังจากส่งการแจ้งเตือนที่นี่
                             console.log('Notification sent:', message);
                         }}
                     />
-                    <View style={tw`flex-row justify-end p-2 bg-gray-50`}>
-                        <TouchableOpacity
-                            onPress={() => setShowNotificationForm(true)}
-                            style={tw`p-2 bg-blue-600 rounded-xl flex-row items-center gap-2`}
-                        >
-                            <TextTheme style={tw`text-white`}>ส่งการแจ้งเตือน</TextTheme>
-                            <Ionicons name='notifications' color="white" size={20} />
-                        </TouchableOpacity>
+
+                    <View style={tw`flex-row justify-end m-5`}>
+                        <Animatable.View style={tw`relative`} animation={"pulse"} iterationCount={"infinite"}>
+                            <View style={tw`w-5 h-5 bg-red-500 rounded-full items-center justify-center absolute z-9 top-[-2] right-[-2]`}>
+                                <TextTheme size='xs' color='white' style={tw`mt-0.5`}>5</TextTheme>
+                            </View>
+                            <TouchableOpacity style={tw`bg-slate-200 rounded-full p-2.5`}>
+                                <Ionicons name='chatbubbles' color={String(tw.color("indigo-500"))} size={30} />
+                            </TouchableOpacity>
+                        </Animatable.View>
                     </View>
                 </TabController>
             </View>

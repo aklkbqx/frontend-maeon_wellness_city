@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, ScrollView } from 'react-native';
+import { View, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Dialog, TouchableOpacity } from 'react-native-ui-lib';
 import { Ionicons } from '@expo/vector-icons';
 import tw from 'twrnc';
@@ -116,69 +116,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
         }
     };
 
-    const CustomInput = ({
-        label,
-        value,
-        onChangeText,
-        error,
-        placeholder,
-        secureTextEntry,
-        keyboardType = 'default',
-        showPasswordToggle = false,
-        isPasswordVisible = false,
-        onTogglePassword
-    }: {
-        label: string;
-        value: string;
-        onChangeText: (text: string) => void;
-        error?: string;
-        placeholder?: string;
-        secureTextEntry?: boolean;
-        keyboardType?: 'default' | 'email-address' | 'numeric';
-        showPasswordToggle?: boolean;
-        isPasswordVisible?: boolean;
-        onTogglePassword?: () => void;
-    }) => (
-        <View style={tw`mb-4`}>
-            <TextTheme font="Prompt-Medium" style={tw`mb-1 text-gray-700`}>
-                {label}
-            </TextTheme>
-            <View style={tw`relative`}>
-                <TextInput
-                    value={value}
-                    onChangeText={onChangeText}
-                    placeholder={placeholder}
-                    secureTextEntry={secureTextEntry}
-                    keyboardType={keyboardType}
-                    style={[
-                        tw`bg-white border rounded-xl px-4 py-3`,
-                        error ? tw`border-red-300` : tw`border-gray-200`,
-                        { fontFamily: 'Prompt-Regular' }
-                    ]}
-                    placeholderTextColor="#9CA3AF"
-                    textContentType="oneTimeCode"
-                />
-                {showPasswordToggle && (
-                    <TouchableOpacity
-                        onPress={onTogglePassword}
-                        style={tw`absolute right-4 top-3`}
-                    >
-                        <Ionicons
-                            name={isPasswordVisible ? "eye-off" : "eye"}
-                            size={24}
-                            color="#6B7280"
-                        />
-                    </TouchableOpacity>
-                )}
-            </View>
-            {error && (
-                <TextTheme style={tw`text-red-500 text-sm mt-1`}>
-                    {error}
-                </TextTheme>
-            )}
-        </View>
-    );
-
     const handleClose = () => {
         setFormData({
             firstname: '',
@@ -195,12 +132,16 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
         onClose();
     };
 
+    const inputStyle = (error: string | undefined) => {
+        return [tw`bg-white border rounded-xl px-4 py-3`, error ? tw`border-red-300` : tw`border-gray-200`, { fontFamily: 'Prompt-Regular' }]
+    }
+
     return (
         <Dialog
             visible={isVisible}
             onDialogDismissed={handleClose}
         >
-            <View style={tw`h-full justify-center items-center`}>
+            <View style={tw`h-full w-full justify-center items-center`}>
                 <View style={tw`bg-white rounded-2xl h-[85%] max-w-md mx-auto w-full`}>
 
                     {/* Header */}
@@ -213,66 +154,131 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    {/* Form */}
-                    <ScrollView>
+                    <ScrollView
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        showsVerticalScrollIndicator={false}
+                    >
                         <View style={tw`p-4`}>
-                            <CustomInput
-                                label="ชื่อ"
-                                value={formData.firstname}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, firstname: text }))}
-                                error={errors.firstname}
-                                placeholder="กรอกชื่อ"
-                            />
+                            {/* ชื่อ */}
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-2`}>ชื่อ</TextTheme>
+                                <TextInput
+                                    value={formData.firstname}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, firstname: text }))}
+                                    placeholder="กรอกชื่อ"
+                                    placeholderTextColor="#9CA3AF"
+                                    style={inputStyle(errors.firstname)}
+                                />
+                                {errors.firstname && (
+                                    <TextTheme style={tw`text-red-500 text-sm mt-1`}>{errors.firstname}</TextTheme>
+                                )}
+                            </View>
 
-                            <CustomInput
-                                label="นามสกุล"
-                                value={formData.lastname}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, lastname: text }))}
-                                error={errors.lastname}
-                                placeholder="กรอกนามสกุล"
-                            />
+                            {/* นามสกุล */}
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-2`}>นามสกุล</TextTheme>
+                                <TextInput
+                                    value={formData.lastname}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, lastname: text }))}
+                                    placeholder="กรอกนามสกุล"
+                                    placeholderTextColor="#9CA3AF"
+                                    style={inputStyle(errors.lastname)}
+                                />
+                                {errors.lastname && (
+                                    <TextTheme style={tw`text-red-500 text-sm mt-1`}>{errors.lastname}</TextTheme>
+                                )}
+                            </View>
 
-                            <CustomInput
-                                label="อีเมล"
-                                value={formData.email}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
-                                error={errors.email}
-                                placeholder="example@email.com"
-                                keyboardType="email-address"
-                            />
+                            {/* อีเมล */}
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-2`}>อีเมล</TextTheme>
+                                <TextInput
+                                    value={formData.email}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
+                                    placeholder="example@email.com"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="email-address"
+                                    style={inputStyle(errors.email)}
+                                />
+                                {errors.email && (
+                                    <TextTheme style={tw`text-red-500 text-sm mt-1`}>{errors.email}</TextTheme>
+                                )}
+                            </View>
 
-                            <CustomInput
-                                label="เบอร์โทรศัพท์"
-                                value={formData.tel}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, tel: text }))}
-                                error={errors.tel}
-                                placeholder="0xxxxxxxxx"
-                                keyboardType="numeric"
-                            />
+                            {/* เบอร์โทรศัพท์ */}
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-2`}>เบอร์โทรศัพท์</TextTheme>
+                                <TextInput
+                                    value={formData.tel}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, tel: text }))}
+                                    placeholder="0xxxxxxxxx"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="numeric"
+                                    style={inputStyle(errors.tel)}
+                                />
+                                {errors.tel && (
+                                    <TextTheme style={tw`text-red-500 text-sm mt-1`}>{errors.tel}</TextTheme>
+                                )}
+                            </View>
 
-                            <CustomInput
-                                label="รหัสผ่าน"
-                                value={formData.password}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
-                                error={errors.password}
-                                placeholder="กรอกรหัสผ่าน"
-                                secureTextEntry={!showPassword}
-                                showPasswordToggle
-                                isPasswordVisible={showPassword}
-                                onTogglePassword={() => setShowPassword(!showPassword)}
-                            />
+                            {/* รหัสผ่าน */}
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-2`}>รหัสผ่าน</TextTheme>
+                                <View style={tw`relative`}>
+                                    <TextInput
+                                        value={formData.password}
+                                        onChangeText={(text) => setFormData(prev => ({ ...prev, password: text }))}
+                                        placeholder="กรอกรหัสผ่าน"
+                                        placeholderTextColor="#9CA3AF"
+                                        secureTextEntry={!showPassword}
+                                        style={inputStyle(errors.password)}
+                                        textContentType='oneTimeCode'
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setShowPassword(!showPassword)}
+                                        style={tw`absolute right-4 top-3`}
+                                    >
+                                        <Ionicons
+                                            name={showPassword ? "eye-off" : "eye"}
+                                            size={24}
+                                            color="#6B7280"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                {errors.password && (
+                                    <TextTheme style={tw`text-red-500 text-sm mt-1`}>{errors.password}</TextTheme>
+                                )}
+                            </View>
 
-                            <CustomInput
-                                label="ยืนยันรหัสผ่าน"
-                                value={formData.confirmPassword}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
-                                error={errors.confirmPassword}
-                                placeholder="กรอกรหัสผ่านอีกครั้ง"
-                                secureTextEntry={!showConfirmPassword}
-                                showPasswordToggle
-                                isPasswordVisible={showConfirmPassword}
-                                onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-                            />
+                            {/* ยืนยันรหัสผ่าน */}
+                            <View style={tw`mb-4`}>
+                                <TextTheme font="Prompt-Medium" style={tw`mb-2`}>ยืนยันรหัสผ่าน</TextTheme>
+                                <View style={tw`relative`}>
+                                    <TextInput
+                                        value={formData.confirmPassword}
+                                        onChangeText={(text) => setFormData(prev => ({ ...prev, confirmPassword: text }))}
+                                        placeholder="กรอกรหัสผ่านอีกครั้ง"
+                                        placeholderTextColor="#9CA3AF"
+                                        secureTextEntry={!showConfirmPassword}
+                                        style={inputStyle(errors.confirmPassword)}
+                                        textContentType='oneTimeCode'
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        style={tw`absolute right-4 top-3`}
+                                    >
+                                        <Ionicons
+                                            name={showConfirmPassword ? "eye-off" : "eye"}
+                                            size={24}
+                                            color="#6B7280"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                {errors.confirmPassword && (
+                                    <TextTheme style={tw`text-red-500 text-sm mt-1`}>{errors.confirmPassword}</TextTheme>
+                                )}
+                            </View>
 
                             <View style={tw`mb-4`}>
                                 <TextTheme font="Prompt-Medium" style={tw`mb-1 text-gray-700`}>
@@ -304,7 +310,6 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
                         </View>
                     </ScrollView>
 
-                    {/* Footer */}
                     <View style={tw`p-4 border-t border-gray-200`}>
                         <TouchableOpacity
                             style={tw`bg-indigo-600 py-3 rounded-xl ${isLoading ? 'opacity-50' : ''}`}
@@ -315,13 +320,13 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({
                                 font="Prompt-SemiBold"
                                 style={tw`text-white text-center`}
                             >
-                                {isLoading ? 'กำลังบันทึก...' : 'เพิ่มสมาชิก'}
+                                {isLoading ? 'กำ ลังบันทึก...' : 'เพิ่มสมาชิก'}
                             </TextTheme>
                         </TouchableOpacity>
                     </View>
                 </View>
             </View>
-        </Dialog>
+        </Dialog >
     );
 };
 

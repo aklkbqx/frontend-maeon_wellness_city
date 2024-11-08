@@ -224,7 +224,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                                             style={[
                                                 tw`px-3 py-1 rounded-full border`,
                                                 formData.type === type.value
-                                                    ? tw`bg-blue-500 border-blue-500`
+                                                    ? tw`bg-indigo-500 border-indigo-500`
                                                     : tw`border-gray-300`
                                             ]}
                                         >
@@ -282,7 +282,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                                         style={[
                                             tw`px-3 py-2 rounded-xl border flex-row items-center gap-2`,
                                             selectedRoles.includes(role.value)
-                                                ? tw`bg-blue-500 border-blue-500`
+                                                ? tw`bg-indigo-500 border-indigo-500`
                                                 : tw`border-gray-300`
                                         ]}
                                     >
@@ -316,7 +316,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={handleSubmit}
-                        style={tw`px-4 py-2 rounded-lg bg-blue-500 flex-row items-center gap-2`}
+                        style={tw`px-4 py-2 rounded-lg bg-indigo-500 flex-row items-center gap-2`}
                     >
                         <TextTheme color="white">ส่งการแจ้งเตือน</TextTheme>
                         <Ionicons name="paper-plane" size={16} color="white" />

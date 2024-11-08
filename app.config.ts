@@ -11,7 +11,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     icon: './assets/images/icon.png',
     scheme: 'maeonwellnesscity',
     userInterfaceStyle: 'automatic',
-
+    owner: "akalak",
+    platforms: ["android", "ios"],
     splash: {
         image: './assets/images/splash.png',
         resizeMode: 'contain',
@@ -64,5 +65,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 // ]
             }
         ]
-    ]
+    ],
+    extra: {
+        eas: {
+            projectId: "e618907e-863c-4568-aded-55af832e836f"
+        }
+    }
 });

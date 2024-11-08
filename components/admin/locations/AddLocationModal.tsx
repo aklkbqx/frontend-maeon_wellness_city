@@ -274,7 +274,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                                             style={[
                                                 tw`px-3 py-2 rounded-xl border flex-row items-center`,
                                                 formData.subdistrict_id === subdistrict.id
-                                                    ? tw`bg-blue-500 border-blue-500`
+                                                    ? tw`bg-indigo-500 border-indigo-500`
                                                     : tw`border-gray-300`
                                             ]}
                                         >
@@ -299,7 +299,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                                         onPress={() => setShowUserSelector(!showUserSelector)}
                                         style={tw`flex-row items-center gap-1`}
                                     >
-                                        <TextTheme size="sm" style={tw`text-blue-500`}>
+                                        <TextTheme size="sm" style={tw`text-indigo-500`}>
                                             {showUserSelector ? 'ซ่อน' : 'แสดง'}
                                         </TextTheme>
                                         <Ionicons
@@ -322,7 +322,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                                                     }))}
                                                     style={[
                                                         tw`p-3 rounded-xl flex-row justify-between items-center`,
-                                                        formData.owner_id === user.id && tw`bg-blue-50`
+                                                        formData.owner_id === user.id && tw`bg-indigo-50`
                                                     ]}
                                                 >
                                                     <View>
@@ -356,7 +356,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                                             style={[
                                                 tw`px-3 py-2 rounded-xl border flex-row items-center gap-2`,
                                                 formData.type === type.id
-                                                    ? tw`bg-blue-500 border-blue-500`
+                                                    ? tw`bg-indigo-500 border-indigo-500`
                                                     : tw`border-gray-300`
                                             ]}
                                         >
@@ -409,7 +409,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                                         onPress={() => setShowTimeSlots(!showTimeSlots)}
                                         style={tw`flex-row items-center gap-1`}
                                     >
-                                        <TextTheme size="sm" style={tw`text-blue-500`}>
+                                        <TextTheme size="sm" style={tw`text-indigo-500`}>
                                             {showTimeSlots ? 'ซ่อน' : 'แสดง'}
                                         </TextTheme>
                                         <Ionicons
@@ -429,7 +429,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                                                 style={[
                                                     tw`px-3 py-1 rounded-full border`,
                                                     selectedTimeSlots.includes(slot)
-                                                        ? tw`bg-blue-500 border-blue-500`
+                                                        ? tw`bg-indigo-500 border-indigo-500`
                                                         : tw`border-gray-300`
                                                 ]}
                                             >
@@ -470,7 +470,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                         <TouchableOpacity
                             onPress={handleSubmit}
                             disabled={isLoading}
-                            style={tw`px-4 py-2 rounded-lg bg-blue-500 flex-row items-center gap-2`}
+                            style={tw`px-4 py-2 rounded-lg bg-indigo-500 flex-row items-center gap-2`}
                         >
                             <TextTheme color="white">
                                 {isLoading ? 'กำลังบันทึก...' : 'บันทึก'}

@@ -23,7 +23,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 value={value}
                 onChangeText={onChangeText}
                 placeholder={placeholder}
-                style={tw`bg-gray-100 text-gray-900 rounded-xl pl-10 pr-4 py-2.5 w-full border border-gray-200`}
+                style={[tw`bg-white text-gray-900 rounded-xl pl-10 pr-4 py-2.5 w-full border border-gray-200`,{fontFamily: "Prompt-Regular"}]}
                 placeholderTextColor="#9CA3AF"
             />
         </View>

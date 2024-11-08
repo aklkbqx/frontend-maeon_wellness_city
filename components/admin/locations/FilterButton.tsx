@@ -27,9 +27,9 @@ const FilterButton: React.FC<FilterButtonProps> = ({
         <>
             <TouchableOpacity
                 onPress={() => setIsVisible(true)}
-                style={tw`bg-gray-100 px-4 py-2.5 rounded-xl flex-row items-center gap-2 border border-gray-200`}
+                style={tw`bg-white px-4 py-2.5 rounded-xl flex-row items-center gap-2 border border-gray-200`}
             >
-                <Ionicons name="filter" size={20} color="#6B7280" />
+                <Ionicons name="filter" size={20} color={String(tw.color("indigo-500"))} />
                 <TextTheme style={tw`text-gray-700`}>ตัวกรอง</TextTheme>
             </TouchableOpacity>
 
@@ -50,12 +50,12 @@ const FilterButton: React.FC<FilterButtonProps> = ({
                                     onSelect(option.value);
                                     setIsVisible(false);
                                 }}
-                                style={tw`flex-row items-center justify-between p-3 rounded-xl ${selectedValue === option.value ? 'bg-blue-50' : ''
+                                style={tw`flex-row items-center justify-between p-3 rounded-xl ${selectedValue === option.value ? 'bg-indigo-50' : ''
                                     }`}
                             >
                                 <TextTheme>{option.label}</TextTheme>
                                 {selectedValue === option.value && (
-                                    <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
+                                    <Ionicons name="checkmark-circle" size={20} color={String(tw.color("indigo-500"))} />
                                 )}
                             </TouchableOpacity>
                         ))}

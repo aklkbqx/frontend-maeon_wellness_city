@@ -15,15 +15,6 @@ import { router } from 'expo-router';
 const BACKGROUND_FETCH_TASK = 'background-fetch';
 const NOTIFICATION_CHANNEL_ID = 'default';
 const NOTIFICATION_SETTINGS_KEY = '@notification_settings';
-const WS_RECONNECT_DELAY = 1000;
-const WS_MAX_RECONNECT_ATTEMPTS = 5;
-
-enum WebSocketState {
-    CONNECTING = 0,
-    OPEN = 1,
-    CLOSING = 2,
-    CLOSED = 3,
-}
 
 export const setupNotificationChannel = async () => {
     if (Platform.OS === 'android') {
@@ -192,9 +183,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Refs
     const socketRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const reconnectAttemptsRef = useRef(0);
-    const lastConnectionAttemptRef = useRef<number>(0);
-    const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // States
     const [isEnabled, setIsEnabled] = useState(false);
@@ -204,7 +192,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [wsConnected, setWsConnected] = useState(false);
     const [userToken, setUserToken] = useState<string | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
-    const [isReconnecting, setIsReconnecting] = useState(false);
 
     const registerBackgroundFetch = async () => {
         try {
@@ -267,40 +254,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     const cleanupWebSocket = useCallback(() => {
-        // console.log('Cleaning up WebSocket connection');
-
-        if (heartbeatIntervalRef.current) {
-            clearInterval(heartbeatIntervalRef.current);
-            heartbeatIntervalRef.current = null;
-        }
-
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
         }
 
         if (socketRef.current) {
-            // console.log('Current WebSocket state:', socketRef.current.readyState);
             socketRef.current.onopen = null;
             socketRef.current.onclose = null;
             socketRef.current.onerror = null;
             socketRef.current.onmessage = null;
-            // if (socketRef.current.readyState === WebSocket.OPEN) {
-            //     try {
-            //         socketRef.current.send(JSON.stringify({ type: 'close' }));
-            //     } catch (err) {
-            //         console.error('Error sending close message:', err);
-            //     }
-            //     socketRef.current.close(1000, 'Normal closure');
-            // } else {
-            //     socketRef.current.close();
-            // }
             socketRef.current = null;
         }
 
         setWsConnected(false);
-        reconnectAttemptsRef.current = 0;
-        setIsReconnecting(false);
     }, []);
 
     const loadSettings = async () => {
@@ -327,54 +294,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             console.error('Error saving settings:', err);
         }
     };
-    const connectWebSocket = useCallback(async (force: boolean = false) => {
-        if (!userToken) {
-            console.log('Token not found, attempting to retrieve...');
-            const token = await AsyncStorage.getItem(userTokenLogin);
-            if (token) {
-                console.log('Token retrieved successfully');
-                setUserToken(token);
-                return;
-            }
-            console.log('No token available');
-            return;
-        }
-
-        if (socketRef.current?.readyState === WebSocket.OPEN) {
-            return;
-        }
-
-        if (isReconnecting) {
-            return;
-        }
-
+    const connectWebSocket = useCallback(async () => {
         if (!isInitialized || !isLogin || !userData || !userToken || !isEnabled) {
             return;
         }
+        // const networkState = await NetInfo.fetch();
+        // if (!networkState.isConnected) {
+        //     console.log('No network connection available');
+        //     setError('No network connection');
+        //     return;
+        // }
 
-        if (reconnectAttemptsRef.current >= WS_MAX_RECONNECT_ATTEMPTS) {
-            setError('Maximum reconnection attempts reached');
-            return;
-        }
-
-        const networkState = await NetInfo.fetch();
-        if (!networkState.isConnected) {
-            console.log('No network connection available');
-            setError('No network connection');
-            return;
-        }
-
-        if (reconnectAttemptsRef.current >= WS_MAX_RECONNECT_ATTEMPTS) {
-            console.log('Max reconnection attempts reached');
-            setError('Maximum reconnection attempts reached');
-            return;
-        }
         if (socketRef.current?.readyState === WebSocket.OPEN) {
             return;
         }
-        cleanupWebSocket();
         try {
-            setIsReconnecting(true);
             if (!wsUrl) {
                 throw new Error("WebSocket URL not found");
             }
@@ -382,45 +316,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const ws = new WebSocket(websocketURL);
             socketRef.current = ws;
 
-            const connectionTimeout = setTimeout(() => {
-                if (socketRef.current?.readyState !== WebSocket.OPEN) {
-                    cleanupWebSocket();
-                    setError('Connection timeout');
-                    if (reconnectAttemptsRef.current < WS_MAX_RECONNECT_ATTEMPTS) {
-                        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-                        reconnectTimeoutRef.current = setTimeout(() => {
-                            reconnectAttemptsRef.current++;
-                            connectWebSocket(true);
-                        }, delay);
-                    }
-                }
-            }, 15000);
-
             socketRef.current.onopen = () => {
                 console.log('WebSocket Connected Successfully');
-                clearTimeout(connectionTimeout);
                 setWsConnected(true);
                 setError(null);
-                setIsReconnecting(false);
-                reconnectAttemptsRef.current = 0;
             };
 
             socketRef.current.onmessage = async (event) => {
                 try {
-                    // console.log('Received message:', event.data);
                     const response = JSON.parse(event.data);
 
-                    if (response === 'pong') {
-                        console.log('Heartbeat response received');
-                        return;
-                    }
-
                     if (!response.success && response.message) {
-                        // console.error('WebSocket error message:', response.message);
                         if (response.message.includes('authentication')) {
-                            // Token might be invalid
                             console.log('Authentication error - refreshing token');
-                            // You might want to refresh the token here
                             disconnectWebSocket();
                             return;
                         }
@@ -439,13 +347,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         (Array.isArray(data.receive?.role) && data.receive.role.includes(String(userData.role))) ||
                         data.receive?.role === userData?.role;
 
-                    // console.log('Notification check:', {
-                    //     shouldNotify,
-                    //     isEnabled,
-                    //     userId: userData?.id,
-                    //     role: userData?.role
-                    // });
-
                     if (shouldNotify && isEnabled) {
                         await scheduleNotification(data);
                     }
@@ -456,15 +357,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             socketRef.current.onerror = (error) => {
                 console.error('WebSocket error:', error);
-                clearTimeout(connectionTimeout);
                 setError('WebSocket connection error');
                 setWsConnected(false);
-                setIsReconnecting(false);
             };
 
             socketRef.current.onclose = (event) => {
                 console.log('WebSocket Disconnected ');
-                clearTimeout(connectionTimeout);
                 setWsConnected(false);
             };
 
@@ -472,61 +370,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             console.error('Error connecting to WebSocket:', err);
             setError('Failed to connect to notification service');
             setWsConnected(false);
-            setIsReconnecting(false);
         }
-    }, [isInitialized, isLogin, isEnabled, userToken, userData, cleanupWebSocket]);
-
-
-    useEffect(() => {
-        if (wsConnected && isEnabled && isLogin && userData) {
-            reconnectAttemptsRef.current++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-            console.log(`Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`);
-            reconnectTimeoutRef.current = setTimeout(() => {
-                connectWebSocket(true);
-            }, delay);
-        }
-    }, [isEnabled, isLogin, userData])
-
-    // const handleLogout = useCallback(async () => {
-    //     try {
-    //         await AsyncStorage.removeItem(userTokenLogin);
-    //         setUserToken(null);
-    //         cleanupWebSocket();
-    //         setIsEnabled(false);
-    //         await saveSettings(false);
-    //     } catch (error) {
-    //         console.error('Error during logout:', error);
-    //     }
-    // }, [cleanupWebSocket]);
-
-    useEffect(() => {
-        if (userToken && isEnabled && !wsConnected) {
-            // console.log('Token available and notifications enabled, attempting connection...');
-            connectWebSocket(true);
-        }
-    }, [userToken, isEnabled, wsConnected]);
-
-    useEffect(() => {
-        const checkRequirements = () => {
-            // console.log('Checking connection requirements:', {
-            //     isInitialized,
-            //     isLogin,
-            //     hasUserData: !!userData,
-            //     isEnabled,
-            //     wsConnected,
-            //     currentState: socketRef.current?.readyState
-            // });
-
-            if (isInitialized && isLogin && userData && isEnabled && !wsConnected) {
-                // console.log('All requirements met, attempting connection');
-                // ใช้ setTimeout เพื่อให้แน่ใจว่า state ทั้งหมดพร้อม
-                setTimeout(() => connectWebSocket(true), 1000);
-            }
-        };
-
-        checkRequirements();
-    }, [isInitialized, isLogin, userData, isEnabled, wsConnected]);
+    }, [isInitialized, isLogin, isEnabled, userToken, userData]);
 
     useEffect(() => {
         if (isLogin && userData && isEnabled && !wsConnected) {
@@ -652,25 +497,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const initialize = useCallback(async () => {
         try {
-            // console.log('Starting initialization...');
             setIsLoading(true);
             await loadSettings();
             await setupNotifications();
+            await initializeNotifications();
             const permissionResult = await requestNotificationPermissions();
             const token = await AsyncStorage.getItem(userTokenLogin);
-            // console.log('Token status:', !!token);
             if (token) {
                 setUserToken(token);
             }
-
             if (permissionResult) {
                 await registerBackgroundFetch();
                 setIsEnabled(true);
                 await saveSettings(true);
             }
-
             setIsInitialized(true);
-            // console.log('Initialization complete');
         } catch (error) {
             console.error('Initialization error:', error);
             setError('Failed to initialize notifications');
@@ -683,23 +524,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         initialize();
     }, []);
 
-    useEffect(() => {
-        const checkAndUpdateToken = async () => {
-            try {
-                const token = await AsyncStorage.getItem(userTokenLogin);
-                // console.log('Token check:', !!token);
-                if (token) {
-                    setUserToken(token);
-                } else {
-                    setUserToken(null);
-                }
-            } catch (error) {
-                console.error('Error checking token:', error);
-            }
-        };
+    // useEffect(() => {
+    //     const checkAndUpdateToken = async () => {
+    //         try {
+    //             const token = await AsyncStorage.getItem(userTokenLogin);
+    //             if (token) {
+    //                 setUserToken(token);
+    //             } else {
+    //                 setUserToken(null);
+    //             }
+    //         } catch (error) {
+    //             console.error('Error checking token:', error);
+    //         }
+    //     };
 
-        checkAndUpdateToken();
-    }, [isLogin]);
+    //     checkAndUpdateToken();
+    // }, [isLogin]);
 
     useEffect(() => {
         if (isInitialized) {
@@ -714,14 +554,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     useEffect(() => {
         const handleAppStateChange = async (nextAppState: AppStateStatus) => {
             if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-                // App coming to foreground
                 if (isInitialized && isLogin && userData && isEnabled) {
-                    await connectWebSocket(true);
+                    await connectWebSocket();
                 }
             } else if (nextAppState.match(/inactive|background/)) {
-                // App going to background
                 cleanupWebSocket();
-                // Ensure background fetch is registered
                 if (isEnabled) {
                     await registerBackgroundFetch();
                 }
@@ -734,12 +571,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             subscription.remove();
         };
     }, [isInitialized, isLogin, userData, isEnabled]);
-
-    useEffect(() => {
-        return () => {
-            cleanupWebSocket();
-        };
-    }, [cleanupWebSocket]);
 
     const contextValue = useMemo(() => ({
         isEnabled,

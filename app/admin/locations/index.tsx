@@ -14,16 +14,12 @@ import AddLocationModal from '@/components/admin/locations/AddLocationModal';
 import SearchBar from '@/components/admin/locations/SearchBar';
 import FilterButton from '@/components/admin/locations/FilterButton';
 import { Locations } from '@/types/PrismaType';
+import Loading from '@/components/Loading';
 
 interface tabItemsType {
     label: string;
     key: string;
     icon: keyof typeof Ionicons.glyphMap;
-}
-
-interface FilterOption {
-    label: string;
-    value: string;
 }
 
 interface LocationDetailType {
@@ -121,7 +117,6 @@ const LocationItem: React.FC<{
                     })}
                 >
                     <View style={tw`flex-row gap-4`}>
-                        {/* รูปภาพสถานที่ */}
                         <View style={tw`w-24 h-24 bg-gray-200 rounded-xl overflow-hidden`}>
                             {images[0] ? (
                                 <Image
@@ -216,7 +211,7 @@ const LocationSkeletonLoader = () => (
 const NoLocations = () => (
     <View style={tw`flex-1 justify-center items-center mt-20`}>
         <View style={tw`bg-slate-200 rounded-full p-4 mb-4`}>
-            <Ionicons name="location-outline" size={50} style={tw`text-blue-500`} />
+            <Ionicons name="location-outline" size={50} style={tw`text-indigo-500`} />
         </View>
         <TextTheme font="Prompt-Medium" size="lg" style={tw`text-slate-600 mb-1`}>
             ไม่พบสถานที่
@@ -289,13 +284,11 @@ const LocationsAdminManager = () => {
             });
         }
 
-        // ต่อจากฟังก์ชัน renderContent
         if (filteredLocations.length === 0) {
             return <NoLocations />;
         }
 
         if (key === 'ALL') {
-            // จัดกลุ่มตาม location type
             const groupedLocations = filteredLocations.reduce((acc, location) => {
                 const typeName = location.location_types.name;
                 if (!acc[typeName]) {
@@ -313,13 +306,13 @@ const LocationsAdminManager = () => {
                                 <Ionicons
                                     name={LOCATION_TYPE_MAP[locations[0].type as keyof typeof LOCATION_TYPE_MAP]?.icon as keyof typeof Ionicons.glyphMap || 'location'}
                                     size={20}
-                                    color={String(tw.color("blue-500"))}
+                                    color={String(tw.color("indigo-500"))}
                                 />
                                 <TextTheme font='Prompt-Medium' size='lg' style={tw`text-gray-900`}>
                                     {typeName}
                                 </TextTheme>
-                                <View style={tw`bg-blue-100 px-2 py-0.5 rounded-full`}>
-                                    <TextTheme size='sm' style={tw`text-blue-700`}>
+                                <View style={tw`bg-indigo-100 px-2 py-0.5 rounded-full`}>
+                                    <TextTheme size='sm' style={tw`text-indigo-700`}>
                                         {locations.length}
                                     </TextTheme>
                                 </View>
@@ -349,7 +342,7 @@ const LocationsAdminManager = () => {
             <Tabs.Screen
                 options={{
                     header: () => (
-                        <View style={tw`bg-white border-b border-gray-200`}>
+                        <View style={tw`bg-white border-b border-gray-200`} >
                             <View style={tw`px-4 pt-14 pb-4`}>
                                 <View style={tw`flex-row justify-between items-center mb-4`}>
                                     <TextTheme font="Prompt-SemiBold" size="xl" style={tw`text-gray-900`}>
@@ -357,7 +350,7 @@ const LocationsAdminManager = () => {
                                     </TextTheme>
                                     <TouchableOpacity
                                         onPress={() => setIsAddModalVisible(true)}
-                                        style={tw`bg-blue-600 px-4 py-2.5 rounded-xl flex-row items-center gap-2`}
+                                        style={tw`bg-indigo-600 px-4 py-2.5 rounded-xl flex-row items-center gap-2`}
                                     >
                                         <Ionicons name="add-circle-outline" size={20} color="white" />
                                         <TextTheme color="white" font="Prompt-Medium">
@@ -388,7 +381,6 @@ const LocationsAdminManager = () => {
             />
 
             <View style={tw`flex-1 bg-gray-50`}>
-                {/* Add Location Modal */}
                 <AddLocationModal
                     isVisible={isAddModalVisible}
                     onClose={() => setIsAddModalVisible(false)}
@@ -398,7 +390,6 @@ const LocationsAdminManager = () => {
                     }}
                 />
 
-                {/* Location List with Tabs */}
                 <TabController
                     asCarousel
                     items={tabItems.map(item => ({
@@ -407,7 +398,7 @@ const LocationsAdminManager = () => {
                             <Ionicons
                                 name={item.icon}
                                 size={20}
-                                color={String(tw.color("blue-500"))}
+                                color={String(tw.color("indigo-500"))}
                                 style={tw`mr-2`}
                             />
                         )
@@ -415,16 +406,22 @@ const LocationsAdminManager = () => {
                     initialIndex={selectedTab}
                     onChangeIndex={setSelectedTab}
                 >
-                    <TabController.TabBar
-                        containerStyle={tw`absolute`}
-                        labelStyle={{ fontFamily: "Prompt-Regular" }}
-                        selectedLabelStyle={{ fontFamily: "Prompt-Regular" }}
-                        selectedLabelColor={String(tw.color("blue-500"))}
-                        iconColor={String(tw.color("blue-500"))}
-                        indicatorStyle={tw`bg-blue-500 h-0.5 rounded-full`}
-                    />
+                    {isLoading ? (
+                        <View style={tw`mt-2`}>
+                            <Loading loading />
+                        </View>
+                    ) : (
+                        <TabController.TabBar
+                            containerStyle={tw`absolute`}
+                            labelStyle={{ fontFamily: "Prompt-Regular" }}
+                            selectedLabelStyle={{ fontFamily: "Prompt-Regular" }}
+                            selectedLabelColor={String(tw.color("indigo-500"))}
+                            iconColor={String(tw.color("indigo-500"))}
+                            indicatorStyle={tw`bg-indigo-500 h-0.5 rounded-full`}
+                        />
+                    )}
 
-                    <TabController.PageCarousel style={tw`mt-12`} scrollEnabled={false}>
+                    <TabController.PageCarousel style={tw`${isLoading ? "mt-0" : "mt-12"}`} scrollEnabled={false}>
                         {tabItems.map((tab, index) => (
                             <TabController.TabPage key={tab.key} index={index}>
                                 <ScrollView
@@ -432,8 +429,8 @@ const LocationsAdminManager = () => {
                                         <RefreshControl
                                             refreshing={refreshing}
                                             onRefresh={handleRefresh}
-                                            colors={[String(tw.color("blue-500"))]}
-                                            tintColor={String(tw.color("blue-500"))}
+                                            colors={[String(tw.color("indigo-500"))]}
+                                            tintColor={String(tw.color("indigo-500"))}
                                         />
                                     }
                                 >
@@ -444,7 +441,7 @@ const LocationsAdminManager = () => {
                         ))}
                     </TabController.PageCarousel>
                 </TabController>
-            </View>
+            </View >
         </>
     );
 };

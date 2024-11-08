@@ -7,7 +7,6 @@ import { userTokenLogin } from '@/helper/my-lib';
 import isEqual from 'lodash/isEqual';
 import { router } from 'expo-router';
 import NetInfo from '@react-native-community/netinfo';
-import useRoleNavigation from '@/hooks/useRoleNavigation';
 
 api.defaults.timeout = 15000;
 

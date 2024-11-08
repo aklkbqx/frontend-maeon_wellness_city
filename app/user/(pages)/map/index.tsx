@@ -16,25 +16,25 @@ import { calculateDistance } from '@/helper/utiles';
 
 
 const mapApi = {
-    fetchTravelData: async (bookingId: number): Promise<ApiResponse> => {
-        try {
-            const response = await api.get(`/api/navigate-map/${bookingId}`);
-            return response.data;
-        } catch (error) {
-            throw new Error('Failed to fetch travel data');
-        }
-    },
+    // fetchTravelData: async (bookingId: number): Promise<ApiResponse> => {
+    //     try {
+    //         const response = await api.get(`/api/navigate-map/${bookingId}`);
+    //         return response.data;
+    //     } catch (error) {
+    //         throw new Error('Failed to fetch travel data');
+    //     }
+    // },
 
-    updateDestinationStatus: async (bookingId: number, destinationId: number): Promise<ApiResponse> => {
-        try {
-            const response = await api.post(`/api/navigate-map/${bookingId}/complete`, {
-                destinationId
-            });
-            return response.data;
-        } catch (error) {
-            throw new Error('Failed to update destination status');
-        }
-    }
+    // updateDestinationStatus: async (bookingId: number, destinationId: number): Promise<ApiResponse> => {
+    //     try {
+    //         const response = await api.post(`/api/navigate-map/${bookingId}/complete`, {
+    //             destinationId
+    //         });
+    //         return response.data;
+    //     } catch (error) {
+    //         throw new Error('Failed to update destination status');
+    //     }
+    // }
 };
 
 // Loading Screen Component
@@ -89,25 +89,25 @@ const Map = () => {
 
         try {
             setIsLoading(true);
-            const response = await api.get<ApiResponse>(`/api/navigate-map/${bookingId}`);
+            // const response = await api.get<ApiResponse>(`/api/navigate-map/${bookingId}`);
             
-            if (response.data.success && response.data.data) {
-                const { data } = response.data;
-                setTravelData(data);
+            // if (response.data.success && response.data.data) {
+            //     const { data } = response.data;
+            //     setTravelData(data);
 
-                // จัดการกับสถานที่ที่เสร็จสิ้นแล้ว
-                const completedIds = data.destinations
-                    .filter(dest => dest.isComplete)
-                    .map(dest => dest.id);
-                setCompletedDestinations(completedIds);
+            //     // จัดการกับสถานที่ที่เสร็จสิ้นแล้ว
+            //     const completedIds = data.destinations
+            //         .filter(dest => dest.isComplete)
+            //         .map(dest => dest.id);
+            //     setCompletedDestinations(completedIds);
 
-                // หาสถานที่ถัดไปที่ยังไม่เสร็จ
-                const nextIncomplete = data.destinations
-                    .findIndex(dest => !dest.isComplete);
-                setCurrentDestinationIndex(nextIncomplete === -1 
-                    ? data.destinations.length - 1 
-                    : nextIncomplete);
-            }
+            //     // หาสถานที่ถัดไปที่ยังไม่เสร็จ
+            //     const nextIncomplete = data.destinations
+            //         .findIndex(dest => !dest.isComplete);
+            //     setCurrentDestinationIndex(nextIncomplete === -1 
+            //         ? data.destinations.length - 1 
+            //         : nextIncomplete);
+            // }
         } catch (error) {
             handleAxiosError(error, (message) => {
                 setError(message);
@@ -118,23 +118,22 @@ const Map = () => {
         }
     }, [bookingId]);
 
-    // อัพเดทสถานะเมื่อถึงจุดหมาย
     const handleDestinationComplete = async (destinationId: number) => {
         try {
-            const result = await api.post<ApiResponse>(`/api/navigate-map/${bookingId}/complete`, {
-                locationId: destinationId
-            });
+            // const result = await api.post<ApiResponse>(`/api/navigate-map/${bookingId}/complete`, {
+            //     locationId: destinationId
+            // });
 
-            if (result.data.success) {
-                setCompletedDestinations(prev => [...prev, destinationId]);
+            // if (result.data.success) {
+            //     setCompletedDestinations(prev => [...prev, destinationId]);
                 
-                // เลื่อนไปจุดหมายถัดไป
-                if (currentDestinationIndex < (travelData?.destinations.length || 0) - 1) {
-                    setCurrentDestinationIndex(prev => prev + 1);
-                }
+            //     // เลื่อนไปจุดหมายถัดไป
+            //     if (currentDestinationIndex < (travelData?.destinations.length || 0) - 1) {
+            //         setCurrentDestinationIndex(prev => prev + 1);
+            //     }
 
-                await loadTravelData(); // รีโหลดข้อมูลใหม่
-            }
+            //     await loadTravelData(); // รีโหลดข้อมูลใหม่
+            // }
         } catch (error) {
             handleAxiosError(error, handleErrorMessage);
         }

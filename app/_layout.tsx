@@ -11,30 +11,30 @@ import { RoleProvider } from '@/context/RoleProvider';
 import { FetchMeProvider } from '@/context/FetchMeContext';
 
 export default function RootLayout() {
-  const navigation = useNavigation()
+  // const navigation = useNavigation()
 
-  useEffect(() => {
-    const preventGoingBack = () => {
-      return true
-    }
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      const currentRoute = e.data.action.target?.split('-')[0]
-      if (currentRoute === 'index' || currentRoute === 'selectdatatime') {
-        e.preventDefault()
-      }
-    })
+  // useEffect(() => {
+  //   const preventGoingBack = () => {
+  //     return true
+  //   }
+  //   const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+  //     const currentRoute = e.data.action.target?.split('-')[0]
+  //     if (currentRoute === 'index' || currentRoute === 'selectdatatime') {
+  //       e.preventDefault()
+  //     }
+  //   })
 
-    if (Platform.OS === 'android') {
-      BackHandler.addEventListener('hardwareBackPress', preventGoingBack)
-    }
+  //   if (Platform.OS === 'android') {
+  //     BackHandler.addEventListener('hardwareBackPress', preventGoingBack)
+  //   }
 
-    return () => {
-      if (Platform.OS === 'android') {
-        BackHandler.removeEventListener('hardwareBackPress', preventGoingBack)
-      }
-      unsubscribe()
-    }
-  }, [navigation])
+  //   return () => {
+  //     if (Platform.OS === 'android') {
+  //       BackHandler.removeEventListener('hardwareBackPress', preventGoingBack)
+  //     }
+  //     unsubscribe()
+  //   }
+  // }, [navigation])
 
   return (
     <FontLoader>
@@ -53,7 +53,7 @@ export default function RootLayout() {
                   <Stack.Screen name="logout" options={{ headerShown: false, gestureEnabled: false }} />
                   <Stack.Screen name="+not-found" />
                   <Stack.Screen name="error-page" options={{ headerShown: false }} />
-                  <Stack.Screen name="connection-error" options={{ headerShown: false, gestureEnabled: false }} />
+                  <Stack.Screen name="connection-error" options={{ headerShown: false, gestureEnabled: false, animation: "fade" }} />
                 </Stack>
               </RoleProvider>
             </FetchMeProvider>

@@ -6,7 +6,7 @@ import TextTheme from "./TextTheme"
 const LoadingScreen = () => {
     return (
         <View style={tw`flex-col flex-1 justify-center items-center`}>
-            <View style={tw`bg-blue-500/10 rounded-xl p-3`}>
+            <View style={tw`bg-slate-200/50 rounded-xl p-3`}>
                 <Loading loading />
                 <TextTheme>กำลังโหลด...</TextTheme>
             </View>

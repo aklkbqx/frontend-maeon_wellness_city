@@ -3,6 +3,7 @@ import TextTheme, { sizeText } from './TextTheme';
 import { Ionicons } from '@expo/vector-icons';
 import tw from "twrnc"
 import { LinearGradient } from 'expo-linear-gradient';
+import { View } from 'react-native-ui-lib';
 
 interface userRoleType {
     role: string | null | undefined;
@@ -10,7 +11,7 @@ interface userRoleType {
     style?: object;
 }
 
-const UserRoleBadge: React.FC<userRoleType> = ({ role, size = "sm", style }) => {
+const UserRoleBadge: React.FC<userRoleType> = ({ role, size = "xs", style }) => {
     const getBadgeProps = (role: any) => {
         switch (role) {
             case 'user':
@@ -64,18 +65,19 @@ const UserRoleBadge: React.FC<userRoleType> = ({ role, size = "sm", style }) => 
         }
     };
 
-    const tailwindStyle = "py-1 px-3 rounded-3xl flex-row items-center justify-center"
     const badgeProps = getBadgeProps(role);
+    const tailwindStyle = `py-1 px-2 rounded-2xl flex-row items-center justify-center bg-${badgeProps.color}-500`
     const combinedStyles = style
         ? [tw.style(tailwindStyle), style]
         : tw.style(tailwindStyle);
-    const color = [String(tw.color(`${badgeProps.color}-400`)), String(tw.color(`${badgeProps.color}-500`))]
 
     return (
-        <LinearGradient colors={color} style={[combinedStyles, tw.style("flex-row gap-1 items-center")]}>
-            <Ionicons color={"white"} size={18} name={badgeProps.icon as any} style={tw.style("mb-0.5")} />
-            <TextTheme color='white' font='Prompt-SemiBold' size={size} children={badgeProps.role} />
-        </LinearGradient>
+        <View style={tw`flex-row`}>
+            <View style={[combinedStyles, tw.style("flex-row gap-1 items-center")]}>
+                <Ionicons color={"white"} size={15} name={badgeProps.icon as keyof typeof Ionicons.glyphMap} style={tw.style("mb-0.5")} />
+                <TextTheme color='white' font='Prompt-SemiBold' size={size} children={badgeProps.role} />
+            </View>
+        </View>
     );
 
 }
