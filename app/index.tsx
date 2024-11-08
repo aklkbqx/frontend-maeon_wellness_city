@@ -3,10 +3,6 @@ import { Redirect } from 'expo-router';
 import { FetchMeProvider, useFetchMeContext } from '@/context/FetchMeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userTokenLogin } from '@/helper/my-lib';
-import { View } from 'react-native-ui-lib';
-import Loading from '@/components/Loading';
-import tw from "twrnc"
-import TextTheme from '@/components/TextTheme';
 import LoadingScreen from '@/components/LoadingScreen';
 
 interface RoleConfig {
@@ -75,9 +71,12 @@ function RootRedirect() {
 }
 
 export default function IndexRootApp() {
+    // return (
+    //     <FetchMeProvider>
+    //         <RootRedirect />
+    //     </FetchMeProvider>
+    // );
     return (
-        <FetchMeProvider>
-            <RootRedirect />
-        </FetchMeProvider>
+        <Redirect href="task" />
     );
 }

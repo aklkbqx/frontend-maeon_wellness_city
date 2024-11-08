@@ -54,6 +54,9 @@ export default function RootLayout() {
                   <Stack.Screen name="+not-found" />
                   <Stack.Screen name="error-page" options={{ headerShown: false }} />
                   <Stack.Screen name="connection-error" options={{ headerShown: false, gestureEnabled: false, animation: "fade" }} />
+                  <Stack.Screen name="task" options={{
+                    title: "test task"
+                  }} />
                 </Stack>
               </RoleProvider>
             </FetchMeProvider>

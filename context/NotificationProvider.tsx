@@ -1,18 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Alert, AppState, Linking, AppStateStatus, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import * as BackgroundFetch from 'expo-background-fetch';
-import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { wsUrl } from '@/helper/api';
 import { NotificationData } from '@/types/notifications';
 import { handleErrorMessage, userTokenLogin } from '@/helper/my-lib';
 import useShowToast from '@/hooks/useShowToast';
 import { useFetchMeContext } from '@/context/FetchMeContext';
-import NetInfo from '@react-native-community/netinfo';
 import { router } from 'expo-router';
 
-const BACKGROUND_FETCH_TASK = 'background-fetch';
+interface NotificationContextType {
+    isEnabled: boolean;
+    permissionStatus: string;
+    toggleNotifications: () => Promise<void>;
+    requestPermission: () => Promise<string>;
+    sendWebSocketNotification: (data: NotificationData) => void;
+    sendNotification: (data: NotificationData) => Promise<void>;
+    openAppSettings: () => void;
+    disconnectWebSocket: () => void;
+    isLoading: boolean;
+    error: string | null;
+    wsConnected: boolean;
+    reconnect: () => void;
+}
+
+
 const NOTIFICATION_CHANNEL_ID = 'default';
 const NOTIFICATION_SETTINGS_KEY = '@notification_settings';
 
@@ -87,20 +99,47 @@ export const handleNotificationResponse = (
 };
 
 
-interface NotificationContextType {
-    isEnabled: boolean;
-    permissionStatus: string;
-    toggleNotifications: () => Promise<void>;
-    requestPermission: () => Promise<string>;
-    sendWebSocketNotification: (data: NotificationData) => void;
-    sendNotification: (data: NotificationData) => Promise<void>;
-    openAppSettings: () => void;
-    disconnectWebSocket: () => void;
-    isLoading: boolean;
-    error: string | null;
-    wsConnected: boolean;
-    reconnect: () => void;
-}
+const setupNotifications = async () => {
+    if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF231F7C',
+            sound: 'default',
+            enableLights: true,
+            enableVibrate: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            showBadge: true,
+        });
+    }
+
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+        }),
+    });
+
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+        // console.log('Notification received:', notification);
+    });
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+        const data = response.notification.request.content.data;
+        if (data?.link) {
+            router.push(data.link);
+        }
+    });
+
+    return () => {
+        Notifications.removeNotificationSubscription(notificationListener);
+        Notifications.removeNotificationSubscription(responseListener);
+    };
+};
+
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -111,70 +150,6 @@ export const useNotification = () => {
     }
     return context;
 };
-
-
-TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
-    try {
-        const token = await AsyncStorage.getItem(userTokenLogin);
-        const notificationEnabled = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY);
-
-        if (!token || !notificationEnabled) {
-            return;
-        }
-
-        const netInfo = await NetInfo.fetch();
-        if (!netInfo.isConnected) {
-            return;
-        }
-
-        const ws = new WebSocket(`${wsUrl}/api/ws/notification?token=${token}`);
-        return new Promise<void>((resolve) => {
-            const timeout = setTimeout(() => {
-                ws.close();
-                resolve();
-            }, 25000);
-
-            ws.onmessage = async (event) => {
-                try {
-                    const response = JSON.parse(event.data);
-                    if (response.success === false) {
-                        return;
-                    }
-
-                    const data = response;
-                    if (!data.type || !data.title || !data.body || !data.receive) {
-                        return;
-                    }
-
-                    await Notifications.scheduleNotificationAsync({
-                        content: {
-                            title: data.title,
-                            body: data.body,
-                            data: data.data,
-                            sound: 'default',
-                            priority: Notifications.AndroidNotificationPriority.HIGH,
-                        },
-                        trigger: null,
-                    });
-
-                    clearTimeout(timeout);
-                    ws.close();
-                    resolve();
-                } catch (error) {
-                    console.error('Background task error:', error);
-                }
-            };
-
-            ws.onerror = () => {
-                clearTimeout(timeout);
-                ws.close();
-                resolve();
-            };
-        });
-    } catch (error) {
-        console.error('Background fetch task error:', error);
-    }
-});
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { userData, isLogin } = useFetchMeContext();
@@ -192,66 +167,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [wsConnected, setWsConnected] = useState(false);
     const [userToken, setUserToken] = useState<string | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
-
-    const registerBackgroundFetch = async () => {
-        try {
-            const backgroundFetchOptions: BackgroundFetch.BackgroundFetchOptions = {
-                minimumInterval: 60,
-                stopOnTerminate: false,
-                startOnBoot: true,
-            };
-
-            if (Platform.OS === 'android') {
-                await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, backgroundFetchOptions);
-            } else {
-                await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, backgroundFetchOptions);
-            }
-        } catch (err) {
-            console.error("Background fetch registration failed:", err);
-        }
-    };
-
-    const setupNotifications = async () => {
-        if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
-                name: 'default',
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
-                sound: 'default',
-                enableLights: true,
-                enableVibrate: true,
-                // แก้ไข AndroidNotificationLockscreenVisibility เป็น AndroidNotificationVisibility
-                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-                showBadge: true,
-            });
-        }
-
-        Notifications.setNotificationHandler({
-            handleNotification: async () => ({
-                shouldShowAlert: true,
-                shouldPlaySound: true,
-                shouldSetBadge: true,
-                priority: Notifications.AndroidNotificationPriority.HIGH,
-            }),
-        });
-
-        const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-            // console.log('Notification received:', notification);
-        });
-
-        const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-            const data = response.notification.request.content.data;
-            if (data?.link) {
-                router.push(data.link);
-            }
-        });
-
-        return () => {
-            Notifications.removeNotificationSubscription(notificationListener);
-            Notifications.removeNotificationSubscription(responseListener);
-        };
-    };
 
     const cleanupWebSocket = useCallback(() => {
         if (reconnectTimeoutRef.current) {
@@ -298,12 +213,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (!isInitialized || !isLogin || !userData || !userToken || !isEnabled) {
             return;
         }
-        // const networkState = await NetInfo.fetch();
-        // if (!networkState.isConnected) {
-        //     console.log('No network connection available');
-        //     setError('No network connection');
-        //     return;
-        // }
 
         if (socketRef.current?.readyState === WebSocket.OPEN) {
             return;
@@ -348,7 +257,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         data.receive?.role === userData?.role;
 
                     if (shouldNotify && isEnabled) {
-                        await scheduleNotification(data);
+                        if (AppState.currentState === 'background') {
+                            await Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title: data.title,
+                                    body: data.body,
+                                    data: Platform.OS === 'ios'
+                                        ? { ...data.data, _contentAvailable: true }
+                                        : data.data,
+                                    sound: 'default',
+                                    priority: Notifications.AndroidNotificationPriority.MAX,
+                                },
+                                trigger: null,
+                            });
+                        } else {
+                            await scheduleNotification(data);
+                        }
                     }
                 } catch (err) {
                     console.error('Error processing message:', err);
@@ -364,6 +288,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketRef.current.onclose = (event) => {
                 console.log('WebSocket Disconnected ');
                 setWsConnected(false);
+                if (isEnabled) {
+                    reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
+                }
             };
 
         } catch (err) {
@@ -372,13 +299,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setWsConnected(false);
         }
     }, [isInitialized, isLogin, isEnabled, userToken, userData]);
-
-    useEffect(() => {
-        if (isLogin && userData && isEnabled && !wsConnected) {
-            console.log('reconnecting....');
-            reconnectTimeoutRef.current = setTimeout(connectWebSocket, 1000);
-        }
-    }, [isEnabled, isLogin, userData, wsConnected])
 
     const toggleNotifications = async () => {
         if (isEnabled) {
@@ -393,7 +313,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         onPress: async () => {
                             setIsEnabled(false);
                             await saveSettings(false);
-                            await BackgroundFetch.unregisterTaskAsync(BACKGROUND_FETCH_TASK);
                             useShowToast("info", "ปิดการแจ้งเตือน", "ปิดการแจ้งเตือนเรียบร้อยแล้ว!");
                             disconnectWebSocket();
                         }
@@ -413,7 +332,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             onPress: async () => {
                                 setIsEnabled(true);
                                 await saveSettings(true);
-                                await registerBackgroundFetch();
                                 useShowToast("success", "เปิดการแจ้งเตือน", "เปิดการแจ้งเตือนเรียบร้อยแล้ว!");
                             }
                         }
@@ -507,7 +425,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 setUserToken(token);
             }
             if (permissionResult) {
-                await registerBackgroundFetch();
                 setIsEnabled(true);
                 await saveSettings(true);
             }
@@ -542,14 +459,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // }, [isLogin]);
 
     useEffect(() => {
-        if (isInitialized) {
-            if (isLogin && isEnabled && userData) {
-                connectWebSocket();
-            } else {
-                disconnectWebSocket();
-            }
+        if (!isInitialized) return
+        if (isLogin && isEnabled && userData) {
+            connectWebSocket();
+        } else {
+            disconnectWebSocket();
         }
     }, [isInitialized, isLogin, userData, isEnabled]);
+
+    useEffect(() => {
+        if (isLogin && userData && isEnabled) {
+            console.log('reconnecting....');
+            reconnectTimeoutRef.current = setTimeout(connectWebSocket, 1000);
+        }
+    }, [isEnabled, isLogin, userData])
+
 
     useEffect(() => {
         const handleAppStateChange = async (nextAppState: AppStateStatus) => {
@@ -559,9 +483,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 }
             } else if (nextAppState.match(/inactive|background/)) {
                 cleanupWebSocket();
-                if (isEnabled) {
-                    await registerBackgroundFetch();
-                }
             }
             appState.current = nextAppState;
         };

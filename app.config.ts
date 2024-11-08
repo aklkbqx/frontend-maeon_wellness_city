@@ -31,7 +31,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 NSAllowsArbitraryLoads: true,
                 NSAllowsArbitraryLoadsInWebContent: true,
                 NSAllowsLocalNetworking: true
-            }
+            },
+            UIBackgroundModes: [
+                "remote-notification",
+                "processing",
+                "location",
+                "fetch"
+            ],
+            BGTaskSchedulerPermittedIdentifiers: [
+                'background-fetch'
+            ]
         }
     },
     android: {
@@ -44,7 +53,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
             googleMaps: {
                 apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
             }
-        }
+        },
+        permissions: [
+            'NOTIFICATIONS',
+            'WAKE_LOCK',
+            'FOREGROUND_SERVICE'
+        ]
     },
     web: {
         bundler: 'metro',
@@ -63,6 +77,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
                 //     "./local/assets/notification-sound.wav",
                 //     "./local/assets/notification-sound-other.wav"
                 // ]
+            }
+        ],
+        [
+            "expo-background-fetch",
+            {
+                "startOnBoot": true
             }
         ]
     ],
